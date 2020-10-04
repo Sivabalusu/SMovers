@@ -1,0 +1,26 @@
+const jwt = require('jsonwebtoken');
+const config = require('config');
+//to verify the authorization of the request made
+module.exports = function (req, res, next) {
+  //fetch token from the header to create private route for the user
+  const jwtToken = req.header('x-auth-token');
+  //check if the token is present in request header
+  if (!jwtToken) {
+    return res.status(401).json({
+      errors: [{ msg: 'No token provided, authorization not granted!' }],
+    });
+  }
+
+  //if the token is provided by the client in the header then verify the token
+  try {
+    //verify the token fetched using secret Key
+    const decodedBookerId = jwt.verify(jwtToken, config.get('jwtKey'));
+    //set the user in request to be used for fitite routes or api hits
+    req.booker = decodedBookerId.booker;
+    next();
+  } catch (err) {
+    res.status(401).json({
+      errors: [{ msg: 'Invalid Token!' }],
+    });
+  }
+};
