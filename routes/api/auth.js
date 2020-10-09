@@ -3,17 +3,25 @@ const express = require('express');
 const routeAuth = require('../../middleware/auth');
 const router = express.Router();
 const Booker = require('../../models/Booker');
+const { users } = require('../../libs/enums');
 
 // @route GET api/auth
 // @desc Authorisation is done
 // @access Public
-router.get('/', routeAuth, async (req, res) => {
+router.get('/:id', routeAuth, async (req, res) => {
   try {
-    //fetch booker using the booker id fetched from the web token
+    //fetch user  using the user id fetched from the web token
     //exclude the password as we do not want to display user's password anywhere
-    const booker = await Booker.findById(req.booker.id).select('-password');
-    //send back the booker to the user
-    res.json(booker);
+
+    //get the user details based on the type of user logged in
+    switch (req.params.id) {
+      case users.BOOKER:
+        const booker = await Booker.findById(req.user.id).select('-password');
+        //send back the booker to the user
+        return res.json(booker);
+      default:
+        return res.status(400).json({ errors: [{ msg: 'Invalid route!' }] });
+    }
   } catch (err) {
     res.status(500).json({ errors: [{ msg: err.message }] });
   }

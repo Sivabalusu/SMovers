@@ -4,7 +4,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const Booker = require('../../models/Booker');
 const config = require('config');
-const fn = require('../../functions');
+const fn = require('../../libs/functions');
 const router = express.Router();
 
 const { check, validationResult } = require('express-validator');
@@ -56,7 +56,7 @@ router.post(
         await booker.save();
         //create a payload to be used by jwt to create hash
         const payload = {
-          booker: {
+          user: {
             /*this id is not in the model, however MongoDB generates object id with every record
             and mongoose provide an interface to use _id as id without using underscore*/
             id: booker.id,
@@ -109,7 +109,7 @@ router.post(
 
         //create a payload to be used by jwt to create hash
         const payload = {
-          booker: {
+          user: {
             /*this id is not in the model, however MongoDB generates object id with every record
             and mongoose provide an interface to use _id as id without using underscore*/
             id: booker.id,
@@ -123,4 +123,18 @@ router.post(
     }
   }
 );
+
+// @route GET api/bookers/logout
+// @desc logout functionality by checking the blacklist jwt
+// @access Public
+router.get('/logout', async (req, res) => {
+  try {
+    //call method to invalidate the jwt token by blacklisting it using DB
+    //Redis could be a better option once the list grows
+    fn.logout(req, res);
+  } catch (err) {
+    //something happened at the server side
+    res.status(500).json({ errors: [{ msg: err.message }] });
+  }
+});
 module.exports = router;
