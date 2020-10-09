@@ -30,6 +30,7 @@ const DriverSchema = new mongoose.Schema({
   },
   totalTrips:{
       type:Number,
+      default:0,
   },
   licenseIssuedDate:{
       type:Date,
