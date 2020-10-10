@@ -5,6 +5,7 @@ const router = express.Router();
 const Booker = require('../../models/Booker');
 const Driver = require('../../models/Driver');
 const { users } = require('../../libs/enums');
+const Helper = require('../../models/Helper');
 
 // @route GET api/auth
 // @desc Authorisation is done
@@ -23,6 +24,9 @@ router.get('/:id', routeAuth, async (req, res) => {
       case users.DRIVER:
         const driver = await Driver.findById(req.user.id).select('-password','-confirmPassword');
         return res.json(driver);
+      case users.HELPER:
+          const helper = await Helper.findById(req.user.id).select('-password','-confirmPassword');
+          return res.json(helper);
       default:
         return res.status(400).json({ errors: [{ msg: 'Invalid route!' }] });
     }

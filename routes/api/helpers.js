@@ -3,9 +3,10 @@
 const express = require('express');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
-const Driver= require('../../models/Driver');
 const bcrypt = require('bcryptjs');
 const Helper = require('../../models/Helper');
+const config = require('config');
+const fn = require('../../libs/functions');
 
 // @route GET api/helpers
 // @desc Test router
@@ -55,7 +56,16 @@ router.post(
 
         //update the database
         await helper.save();
-        res.send("Helper Registered");
+        //creating jwt token
+        const payload = {
+            helper: {
+              /*this id is not in the model, however MongoDB generates object id with every record
+              and mongoose provide an interface to use _id as id without using underscore*/
+              id: helper.id,
+            },
+          };
+          //get jwt, json web token
+          fn.createJwtToken(payload, res);
       }
       catch(err){
         res.status(500).json({ errors: err.message });
@@ -64,5 +74,57 @@ router.post(
 }
 );
 
+// @route Post api/helper/login
+// @desc authenticate user to login
+// @access Public
+router.post(
+    '/login',
+    [
+      //check if the helper provided the values
+      check('email', 'Email is required').isEmail(),
+      check('password', 'Password is required').exists(),
+    ],
+    async (req, res) => {
+      //when request is received, validate the helper data before proceeding further
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        //if there were some errors in the data received send the 400 response with the error message
+        return res.status(400).json({ errors: errors.array() });
+      } else {
+        //if data is correct, then log helper
+        try {
+          //destructure the parameters
+          const { email, password } = req.body;
+  
+          //find the helper with the email entered
+          let helper = await Helper.findOne({ email });
+  
+          //if the helper already exists in the system then return from here
+          if (!helper) {
+            return res.status(400).json({ errors: [{ msg: 'Invalid Credentials' }] });
+          }
+          // check if the password entered password is correct or not by using bcrypt
+          const valid = await bcrypt.compare(password, helper.password);
+  
+          if (!valid) {
+            return res.status(400).json({ errors: [{ msg: 'Invalid Credentials' }] });
+          }
+  
+          //create a payload to be used by jwt to create hash
+          const payload = {
+            user: {
+              /*this id is not in the model, however MongoDB generates object id with every record
+              and mongoose provide an interface to use _id as id without using underscore*/
+              id: helper.id,
+            },
+          };
+          //get jwt, json web token
+          fn.createJwtToken(payload, res);
+        } catch (err) {
+          res.status(500).json({ errors: err.message });
+        }
+      }
+    }
+);
 
 module.exports = router;
