@@ -15,10 +15,6 @@ const DriverSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  confirmPassword: {
-    type: String,
-    required: true,
-  },
   rate: {
     type: Number,
     required:true,

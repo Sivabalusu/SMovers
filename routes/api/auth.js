@@ -22,11 +22,11 @@ router.get('/:id', routeAuth, async (req, res) => {
         //send back the booker to the user
         return res.json(booker);
       case users.DRIVER:
-        const driver = await Driver.findById(req.user.id).select('-password','-confirmPassword');
+        const driver = await Driver.findById(req.user.id).select('-password');
         return res.json(driver);
       case users.HELPER:
-          const helper = await Helper.findById(req.user.id).select('-password','-confirmPassword');
-          return res.json(helper);
+        const helper = await Helper.findById(req.user.id).select('-password');
+        return res.json(helper);
       default:
         return res.status(400).json({ errors: [{ msg: 'Invalid route!' }] });
     }

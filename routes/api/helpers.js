@@ -36,8 +36,9 @@ router.post(
       //if data is correct, add the helper
       try {
         //destructure the parameters
-        const {name,email,password,confirmPassword,rate} = req.body;
-
+        const {name,password,rate} = req.body;
+        let {email} = req.body;
+        email = email.toLowerCase();
         //find whether helper with entered email has already registered
         let helper= await Helper.findOne({email});
 
@@ -47,18 +48,17 @@ router.post(
         }
 
         //if this is the new helper then create new helper
-        helper=new Helper({name,email,password,confirmPassword,rate});
+        helper=new Helper({name,email,password,rate});
 
         //generate salt and hash the password of the drvier for protection
         const hashSalt = await bcrypt.genSalt(10);
         helper.password = await bcrypt.hash(password, hashSalt);
-        helper.confirmPassword= await bcrypt.hash(confirmPassword,hashSalt);
 
         //update the database
         await helper.save();
         //creating jwt token
         const payload = {
-            helper: {
+            user: {
               /*this id is not in the model, however MongoDB generates object id with every record
               and mongoose provide an interface to use _id as id without using underscore*/
               id: helper.id,
@@ -94,8 +94,9 @@ router.post(
         //if data is correct, then log helper
         try {
           //destructure the parameters
-          const { email, password } = req.body;
-  
+          const { password } = req.body;
+          let {email} = req.body;
+          email = email.toLowerCase();
           //find the helper with the email entered
           let helper = await Helper.findOne({ email });
   

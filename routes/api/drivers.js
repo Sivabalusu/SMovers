@@ -37,8 +37,9 @@ router.post(
       //if data is correct, add the driver
       try {
         //destructure the parameters
-        const {name,email,password,confirmPassword,rate,licenseIssuedDate} = req.body;
-
+        const {name,password,rate,licenseIssuedDate} = req.body;
+        let {email} = req.body;
+        email = email.toLowerCase();
         //find whether driver with entered email has already registered
         let driver= await Driver.findOne({email});
 
@@ -46,20 +47,18 @@ router.post(
         if(driver){
             return res.status(400).json({ errors: [{ msg: 'Driver already exists in the system' }] });
         }
-
         //if this is the new driver then create new driver
-        driver=new Driver({name,email,password,confirmPassword,rate,licenseIssuedDate,});
+        driver=new Driver({name,email,password,rate,licenseIssuedDate,});
 
         //generate salt and hash the password of the drvier for protection
         const hashSalt = await bcrypt.genSalt(10);
         driver.password = await bcrypt.hash(password, hashSalt);
-        driver.confirmPassword= await bcrypt.hash(confirmPassword,hashSalt);
 
         //update the database
         await driver.save();
         //creating jwt token
         const payload = {
-            driver: {
+            user: {
               /*this id is not in the model, however MongoDB generates object id with every record
               and mongoose provide an interface to use _id as id without using underscore*/
               id: driver.id,
@@ -95,8 +94,9 @@ router.post(
         //if data is correct, then log driver
         try {
           //destructure the parameters
-          const { email, password } = req.body;
-  
+          const { password } = req.body;
+          let {email} = req.body;
+          email = email.toLowerCase();
           //find the driver with the email entered
           let driver = await Driver.findOne({ email });
   
