@@ -15,6 +15,10 @@ const DriverSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  confirmPassword: {
+    type: String,
+    required: true,
+  },
   rate: {
     type: Number,
     required:true,
@@ -26,6 +30,7 @@ const DriverSchema = new mongoose.Schema({
   },
   totalTrips:{
       type:Number,
+      default:0,
   },
   licenseIssuedDate:{
       type:Date,
