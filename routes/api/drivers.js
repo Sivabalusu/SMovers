@@ -127,6 +127,32 @@ router.post(
       }
     }
 );
-  
+
+// @route GET api/driver/logout
+// @desc logout functionality by checking the blacklist jwt
+// @access Public
+router.get('/logout', async (req, res) => {
+  try {
+    //call method to invalidate the jwt token by blacklisting it using DB
+    fn.logout(req, res);
+  } catch (err) {
+    //something happened at the server side
+    res.status(500).json({ errors: [{ msg: err.message }] });
+  }
+});
+
+// @route Delete api/driver
+// @desc delete functionality to delete the driver profile.
+// @access Public
+// router.delete('/', routeAuth, async(req, res) =>{
+//   try{
+//     // finds the driver by its email and perform the delete action to delete the driver profile.
+//     await Driver.findOneAndRemove({ email: req.driver.email });
+//   } catch (err) {
+//     //prints the error message if it fails to delete the driver profile.
+//     console.error(err.message);
+//     res.status(500).send('Server Error');
+//   }
+// });
 
 module.exports = router;
