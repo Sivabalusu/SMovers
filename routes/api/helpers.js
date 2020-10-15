@@ -129,7 +129,7 @@ router.post(
     }
 );
 
-// @route GET api/helper/view/:helper_id
+// @route GET api/helpers/view/:helper_id
 // @desc View helper profile functionality by using jwt login token
 // @access private
 router.get('/view/:helper_id', auth, async(req,res) =>{
@@ -153,7 +153,37 @@ router.get('/view/:helper_id', auth, async(req,res) =>{
   }
 });
 
-// @route Post api/helper/logout
+// @route POST api/helpers/update/:helper_id
+// @desc View helper profile functionality by using jwt login token
+// @access public
+router.post('/update/:helper_id', auth, async(req,res) =>{
+  try{
+    //pass the helper_id as parameter
+    const id=req.params.helper_id;
+    //read the updates from request body
+    const updates=req.body;
+    //in mongoose, the updated values won't appear immediately current post request
+    //to get new updated values to post request we need to set options to true
+    const options= {new:true};
+    const update = await Helper.findOneAndUpdate({_id:id},updates,options);
+    if(!update){
+      //If there is no helper data
+      return res.status(400).json({msg:'Update failed'});
+    }
+    //send driver data as response
+    res.json(update);
+  }
+  catch(err){
+    console.error(err.message);
+    if(err.kind=='ObjectId'){
+      return res.status(400).json({msg:'Update failed'});
+    }
+    res.status(500).send('Server Error');
+  }
+});
+
+
+// @route Post api/helpers/logout
 // @desc logout functionality by checking the blacklist jwt
 // @access Public
 router.get('/logout', async (req, res) => {
