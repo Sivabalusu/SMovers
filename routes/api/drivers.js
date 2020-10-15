@@ -8,6 +8,8 @@ const bcrypt = require('bcryptjs');
 const config = require('config');
 const fn = require('../../libs/functions');
 
+const auth=require('../../middleware/auth');
+
 // @route  POST api/drivers
 // @desc   Register router
 // @access Public
@@ -127,6 +129,24 @@ router.post(
       }
     }
 );
+
+// @route GET api/driver/view/:driver_id
+// @desc logout functionality by checking the blacklist jwt
+// @access private
+router.get('/view/:driver_id', auth, async(req,res) =>{
+  try{
+    //pass the driver_id as parameter
+    const driver = await Driver.findOne(req.params.id).select('-password');
+    if(!driver){
+      return res.status(400).json({msg:'Driver data not found'});
+    }
+    res.json(driver);
+  }
+  catch(err){
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
 
 // @route GET api/driver/logout
 // @desc logout functionality by checking the blacklist jwt
