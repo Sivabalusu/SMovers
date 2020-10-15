@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs');
 const Helper = require('../../models/Helper');
 const config = require('config');
 const fn = require('../../libs/functions');
+const auth=require('../../middleware/auth');
 
 // @route GET api/helpers
 // @desc Test router
@@ -127,6 +128,30 @@ router.post(
       }
     }
 );
+
+// @route GET api/helper/view/:helper_id
+// @desc View helper profile functionality by using jwt login token
+// @access private
+router.get('/view/:helper_id', auth, async(req,res) =>{
+  try{
+    //pass the helper_id as parameter
+    const id=req.params.helper_id;
+    const helper = await Helper.findOne({_id:id}).select('-password');
+    if(!helper){
+      //If there is no helper data
+      return res.status(400).json({msg:'helper data not found'});
+    }
+    //send driver data as response
+    res.json(helper);
+  }
+  catch(err){
+    console.error(err.message);
+    if(err.kind=='ObjectId'){
+      return res.status(400).json({msg:'Helper data not found'});
+    }
+    res.status(500).send('Server Error');
+  }
+});
 
 // @route Post api/helper/logout
 // @desc logout functionality by checking the blacklist jwt

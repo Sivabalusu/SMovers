@@ -131,19 +131,25 @@ router.post(
 );
 
 // @route GET api/driver/view/:driver_id
-// @desc logout functionality by checking the blacklist jwt
+// @desc View Driver Profile functionality by using jwt login token
 // @access private
 router.get('/view/:driver_id', auth, async(req,res) =>{
   try{
+    const id=req.params.driver_id;
     //pass the driver_id as parameter
-    const driver = await Driver.findOne(req.params.id).select('-password');
+    const driver = await Driver.findOne({_id:id}).select('-password');
     if(!driver){
+      //if there is no driver data
       return res.status(400).json({msg:'Driver data not found'});
     }
+    //send driver data as response
     res.json(driver);
   }
   catch(err){
     console.error(err.message);
+    if(err.kind=='ObjectId'){
+      return res.status(400).json({msg:'Driver data not found'});
+    }
     res.status(500).send('Server Error');
   }
 });
