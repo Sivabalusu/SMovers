@@ -168,7 +168,7 @@ router.delete('/', routeAuth, async (req, res) => {
 });
 
 // @route GET api/booker/driver/:driver_id
-// @desc View Driver Profile functionality by using jwt login token
+// @desc View Driver's Profile by providing driver id 
 // @access private
 router.get('/driver/:driver_id', async(req,res) =>{
   try{
@@ -193,7 +193,7 @@ router.get('/driver/:driver_id', async(req,res) =>{
 
 
 // @route GET api/helpers/view/:helper_id
-// @desc View helper profile functionality by using jwt login token
+// @desc View helper profile functionality by providing helper id
 // @access private
 router.get('/helper/:helper_id', async(req,res) =>{
   try{
