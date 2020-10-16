@@ -132,26 +132,26 @@ router.post(
 // @route GET api/helpers/view/:helper_id
 // @desc View helper profile functionality by using jwt login token
 // @access private
-router.get('/view/:helper_id', auth, async(req,res) =>{
-  try{
-    //pass the helper_id as parameter
-    const id=req.params.helper_id;
-    const helper = await Helper.findOne({_id:id}).select('-password');
-    if(!helper){
-      //If there is no helper data
-      return res.status(400).json({msg:'helper data not found'});
-    }
-    //send driver data as response
-    res.json(helper);
-  }
-  catch(err){
-    console.error(err.message);
-    if(err.kind=='ObjectId'){
-      return res.status(400).json({msg:'Helper data not found'});
-    }
-    res.status(500).send('Server Error');
-  }
-});
+// router.get('/view/:helper_id', auth, async(req,res) =>{
+//   try{
+//     //pass the helper_id as parameter
+//     const id=req.params.helper_id;
+//     const helper = await Helper.findOne({_id:id}).select('-password');
+//     if(!helper){
+//       //If there is no helper data
+//       return res.status(400).json({msg:'helper data not found'});
+//     }
+//     //send driver data as response
+//     res.json(helper);
+//   }
+//   catch(err){
+//     console.error(err.message);
+//     if(err.kind=='ObjectId'){
+//       return res.status(400).json({msg:'Helper data not found'});
+//     }
+//     res.status(500).send('Server Error');
+//   }
+// });
 
 // @route POST api/helpers/update/:helper_id
 // @desc View helper profile functionality by using jwt login token

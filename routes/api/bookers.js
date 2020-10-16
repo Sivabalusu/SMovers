@@ -166,4 +166,54 @@ router.delete('/', routeAuth, async (req, res) => {
     res.status(500).json({ errors: [{ msg: err.message }] });
   }
 });
+
+// @route GET api/booker/driver/:driver_id
+// @desc View Driver Profile functionality by using jwt login token
+// @access private
+router.get('/driver/:driver_id', async(req,res) =>{
+  try{
+    const id=req.params.driver_id;
+    //pass the driver_id as parameter
+    const driver = await Driver.findOne({_id:id}).select('-password');
+    if(!driver){
+      //if there is no driver data
+      return res.status(400).json({msg:'Driver data not found'});
+    }
+    //send driver data as response
+    res.json(driver);
+  }
+  catch(err){
+    console.error(err.message);
+    if(err.kind=='ObjectId'){
+      return res.status(400).json({msg:'Driver data not found'});
+    }
+    res.status(500).send('Server Error');
+  }
+});
+
+
+// @route GET api/helpers/view/:helper_id
+// @desc View helper profile functionality by using jwt login token
+// @access private
+router.get('/helper/:helper_id', async(req,res) =>{
+  try{
+    //pass the helper_id as parameter
+    const id=req.params.helper_id;
+    const helper = await Helper.findOne({_id:id}).select('-password');
+    if(!helper){
+      //If there is no helper data
+      return res.status(400).json({msg:'helper data not found'});
+    }
+    //send driver data as response
+    res.json(helper);
+  }
+  catch(err){
+    console.error(err.message);
+    if(err.kind=='ObjectId'){
+      return res.status(400).json({msg:'Helper data not found'});
+    }
+    res.status(500).send('Server Error');
+  }
+});
+
 module.exports = router;
