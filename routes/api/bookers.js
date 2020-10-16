@@ -1,6 +1,7 @@
 //APIs related to a booker, someone who books a driver or a helper
 
 const express = require('express');
+const routeAuth = require('../../middleware/auth');
 const bcrypt = require('bcryptjs');
 const Booker = require('../../models/Booker');
 const config = require('config');
@@ -132,6 +133,34 @@ router.get('/logout', async (req, res) => {
     //call method to invalidate the jwt token by blacklisting it using DB
     //Redis could be a better option once the list grows
     fn.logout(req, res);
+  } catch (err) {
+    //something happened at the server side
+    res.status(500).json({ errors: [{ msg: err.message }] });
+  }
+});
+
+// @route DELETE api/bookers/
+// @desc permanentaly delete the account of the booker
+// @access Public
+router.delete('/', routeAuth, async (req, res) => {
+  try {
+    //get the user containing the id from the request which we got after routeAuth was run
+    let booker = req.user;
+    const {password} = req.body;
+    //get the user data from the database so that we can check whether the password user entered is right or not
+    booker = await Booker.findById(booker.id);
+    if(booker){
+      // check if the password entered password is correct or not by using bcrypt
+      const valid = await bcrypt.compare(password, booker.password);
+      if(valid){
+        booker = await Booker.findByIdAndDelete(booker.id);
+        //return the deleted user for demonstrating purposes
+        return res.status(200).json(booker);
+      }
+      //when user enters wrong password while deleting the account
+      return res.status(400).json({errors:[{msg:"Incorrect Password!"}]})
+    }
+    return res.status(400).json({errors:[{msg:"Cannot find the booker!"}]})
   } catch (err) {
     //something happened at the server side
     res.status(500).json({ errors: [{ msg: err.message }] });
