@@ -31,6 +31,14 @@ const DriverSchema = new mongoose.Schema({
   licenseIssuedDate:{
       type:Date,
       required:true,
+  },
+  carType:{
+    type:String,
+    required:true,
+  },
+  drivingExperience:{
+    type:Number,
+    required:true,
   }
 });
 
