@@ -158,7 +158,7 @@ router.delete('/', routeAuth, async (req, res) => {
         return res.status(200).json(booker);
       }
       //when user enters wrong password while deleting the account
-      return res.status(400).json({errors:[{msg:"Incorrect Password!"}]})
+      return res.status(401).json({errors:[{msg:"Incorrect Password!"}]})
     }
     return res.status(400).json({errors:[{msg:"Cannot find the booker!"}]})
   } catch (err) {
