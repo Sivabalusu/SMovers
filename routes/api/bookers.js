@@ -4,6 +4,8 @@ const express = require('express');
 const routeAuth = require('../../middleware/auth');
 const bcrypt = require('bcryptjs');
 const Booker = require('../../models/Booker');
+const Driver = require('../../models/Driver');
+const Availability = require('../../models/Availability');
 const config = require('config');
 const fn = require('../../libs/functions');
 const router = express.Router();
@@ -23,6 +25,9 @@ router.post(
       //password should be matched according to the criteria defind in the line above
       min: 8,
     }),
+    check('confirmPassword',"Both passowrds must match").custom((value,{req})=>{
+      return value===req.body.password;
+    }),
   ],
   async (req, res) => {
     //when request is received, validate the user data before proceeding further
@@ -34,8 +39,9 @@ router.post(
       //if data is correct, create the user
       try {
         //destructure the parameters
-        const { name, email, password } = req.body;
-
+        const { name, password } = req.body;
+        let {email} = req.body;
+        email = email.toLowerCase();
         //find the user with the email entered
         let booker = await Booker.findOne({ email });
 
@@ -92,8 +98,9 @@ router.post(
       //if data is correct, create the user
       try {
         //destructure the parameters
-        const { email, password } = req.body;
-
+        const {password } = req.body;
+        let {email} = req.body;
+        email = email.toLowerCase();
         //find the user with the email entered
         let booker = await Booker.findOne({ email });
 
@@ -167,3 +174,58 @@ router.delete('/', routeAuth, async (req, res) => {
   }
 });
 module.exports = router;
+
+// @route GET api/bookers/drivers
+// @desc fetch the available drivers
+// @access Public
+// router.get('/drivers',async (req,res)=>{
+//   try{
+//     const drivers = await Driver.find().select('-password');
+//     res.status(200).json(drivers);
+//   }catch(err){
+//     //something happened at the server side
+//     res.status(500).json({ errors: [{ msg: err.message }] });
+//   }
+// });
+
+// @route GET api/bookers/searchDrivers
+// @desc fetch the available drivers based on the search criteria of the user
+// @access Public
+router.get('/searchDrivers',async (req,res)=>{
+  try{
+    let {carType,location} = req.query;
+    //get the availabilities of secondary users -> helpers and drivers
+    const values = await fn.getAvailabilities(req,res);
+    if(values == null){
+      return res.status(500).json({errors:[{msg:"Date cannot be lower than today's date!"}]}); 
+    }
+    availabilities =  values[0];
+    availableEmails = values[1];
+    //find drivers who are available 
+    let availableUsers;
+    //if both carType and location is provided
+    if(typeof carType != typeof undefined  && typeof location != typeof undefined){
+      availableUsers = await Driver.find({email:[...availableEmails],carType,location}).select("-password");
+    }
+    //if location is provided
+    else if(typeof location != typeof undefined){
+      availableUsers = await Driver.find({email:[...availableEmails],location}).select("-password");
+    }
+    //if carType is provided
+    else if(typeof carType != typeof undefined){
+      availableUsers = await Driver.find({email:[...availableEmails],carType}).select("-password");
+    }
+    else
+    //if nothing is provided
+    {
+      availableUsers = await Driver.find({email:[...availableEmails]}).select("-password");
+    }
+    //join availability and other details of the drivers except password
+    availableUsers = fn.getUsersWithAvaliability(availabilities,availableUsers);
+    res.status(200).json(availableUsers);
+  }catch(err){
+    //something happened at the server side
+    res.status(500).json({ errors: [{ msg: err.message }] });
+  }
+});
+
