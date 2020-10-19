@@ -5,6 +5,7 @@ const routeAuth = require('../../middleware/auth');
 const bcrypt = require('bcryptjs');
 const Booker = require('../../models/Booker');
 const Driver = require('../../models/Driver');
+const Helper = require('../../models/Helper');
 const Availability = require('../../models/Availability');
 const config = require('config');
 const fn = require('../../libs/functions');
@@ -229,3 +230,37 @@ router.get('/searchDrivers',async (req,res)=>{
   }
 });
 
+// @route GET api/bookers/searchHelpers
+// @desc fetch the available helpers based on the search criteria of the user
+// @access Public
+router.get('/searchHelpers',async (req,res)=>{
+  try{
+    let {location} = req.query;
+    //get the availabilities of secondary users -> helpers and drivers
+    const values = await fn.getAvailabilities(req,res);
+    if(values == null){
+      return res.status(500).json({errors:[{msg:"Date cannot be lower than today's date!"}]}); 
+    }
+    availabilities =  values[0];
+    availableEmails = values[1];
+    //find helpers who are available 
+    let availableUsers;
+    
+    //if location is provided
+    if(typeof location != typeof undefined){
+      availableUsers = await Helper.find({email:[...availableEmails],location}).select("-password");
+    }
+    
+    //if nothing is provided
+    else
+    {
+      availableUsers = await Helper.find({email:[...availableEmails]}).select("-password");
+    }
+    //join availability and other details of the helpers except password
+    availableUsers = fn.getUsersWithAvaliability(availabilities,availableUsers);
+    res.status(200).json(availableUsers);
+  }catch(err){
+    //something happened at the server side
+    res.status(500).json({ errors: [{ msg: err.message }] });
+  }
+});
