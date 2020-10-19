@@ -25,6 +25,7 @@ router.post(
           return value===req.body.password;
         }),
         check('rate','Rate (pay/hr) is required').not().isEmpty(),
+        check('location','Location (city) is required').not().isEmpty(),
 
     ], 
     async(req, res) => {
@@ -37,7 +38,7 @@ router.post(
       //if data is correct, add the helper
       try {
         //destructure the parameters
-        const {name,password,rate} = req.body;
+        const {name,password,rate,location} = req.body;
         let {email} = req.body;
         email = email.toLowerCase();
         //find whether helper with entered email has already registered
@@ -49,7 +50,7 @@ router.post(
         }
 
         //if this is the new helper then create new helper
-        helper=new Helper({name,email,password,rate});
+        helper=new Helper({name,email,password,rate,location});
 
         //generate salt and hash the password of the drvier for protection
         const hashSalt = await bcrypt.genSalt(10);
@@ -153,10 +154,10 @@ router.post(
 //   }
 // });
 
-// @route POST api/helpers/update/:helper_id
+// @route POST api/helpers/update
 // @desc View helper profile functionality by using jwt login token
 // @access public
-router.post('/update/:helper_id', auth, async(req,res) =>{
+router.post('/update', auth, async(req,res) =>{
   try{
     //pass the helper_id as parameter
     const id=req.params.helper_id;

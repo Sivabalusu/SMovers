@@ -29,7 +29,7 @@ router.post(
         check('licenseIssuedDate','License issued date is mandatory').not().isEmpty(),
         check('carType','Have to enter your car type').not().isEmpty(),
         check('drivingExperience', 'Driving experience in years is required').not().isEmpty(),
-
+        check('location','Location (city) is required').not().isEmpty(),
     ], 
     async(req, res) => {
     //when request is received, validate the driver data before proceeding further
@@ -41,7 +41,7 @@ router.post(
       //if data is correct, add the driver
       try {
         //destructure the parameters
-        const {name,password,rate,licenseIssuedDate,carType,drivingExperience} = req.body;
+        const {name,password,rate,licenseIssuedDate,carType,drivingExperience,location} = req.body;
         let {email} = req.body;
         email = email.toLowerCase();
         //find whether driver with entered email has already registered
@@ -52,7 +52,7 @@ router.post(
             return res.status(400).json({ errors: [{ msg: 'Driver already exists in the system' }] });
         }
         //if this is the new driver then create new driver
-        driver=new Driver({name,email,password,rate,licenseIssuedDate,carType,drivingExperience});
+        driver=new Driver({name,email,password,rate,licenseIssuedDate,carType,drivingExperience,location});
 
         //generate salt and hash the password of the drvier for protection
         const hashSalt = await bcrypt.genSalt(10);
