@@ -159,20 +159,56 @@ router.post(
 // @access public
 router.post('/update', auth, async(req,res) =>{
   try{
-    //pass the helper_id as parameter
-    const id=req.params.helper_id;
+   //get the user containing the id from the request which we got after routeAuth was run
+   let helper = req.user;
     //read the updates from request body
     const updates=req.body;
+    helper = await Helper.findById(helper.id);
     //in mongoose, the updated values won't appear immediately current post request
     //to get new updated values to post request we need to set options to true
     const options= {new:true};
-    const update = await Helper.findOneAndUpdate({_id:id},updates,options);
+    update = await Helper.findByIdAndUpdate(helper.id,updates,options);
     if(!update){
       //If there is no helper data
       return res.status(400).json({msg:'Update failed'});
     }
     //send driver data as response
     res.json(update);
+  }
+  catch(err){
+    console.error(err.message);
+    if(err.kind=='ObjectId'){
+      return res.status(400).json({msg:'Update failed'});
+    }
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route POST api/helpers/updatePassword
+// @desc View helper profile functionality by using jwt login token
+// @access public
+router.post('/updatePassword', auth, async(req,res) =>{
+  try{
+   //get the user containing the id from the request which we got after routeAuth was run
+   let helper = req.user;
+    //read the updates from request body
+    const {oldPassword, newPassword}=req.body;
+    const password=newPassword;
+    const options= {new:true};
+    helper = await Helper.findById(helper.id);
+    if(helper){
+      // check if the password entered password is correct or not by using bcrypt
+      const valid = await bcrypt.compare(oldPassword, helper.password);
+      if(valid){
+        helper = await Helper.findByIdAndUpdate(helper.id,password,options);;
+        //return the deleted user for demonstrating purposes
+        return res.status(200).json(helper);
+      }
+      //when user enters wrong password while deleting the account
+      return res.status(401).json({errors:[{msg:"Incorrect Password!"}]})
+    }
+    return res.status(400).json({errors:[{msg:"Cannot find the Helper!"}]})
+   
   }
   catch(err){
     console.error(err.message);
