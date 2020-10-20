@@ -14,11 +14,12 @@ describe('Driver Post endpoints', () => {
             Rate: cost per kms,
             licenseIssuedDate: date,
             carType:car type,
-            drivingExperience:experience in years
+            drivingExperience:experience in years,
+            location:city name
     Expected output : JSON returned with 200 status 
   */
   it('Should create a new user and return a web token', async (done) => {
-    const response = await request(app).post('/api/bookers').send({
+    const response = await request(app).post('/api/drivers').send({
         Name: 'Test Driver',
         Email:'test@email.com',
         Password: 'test',
@@ -26,7 +27,8 @@ describe('Driver Post endpoints', () => {
         Rate:'cost per kms',
         licenseIssuedDate: 'date',
         carType:'car type',
-        drivingExperience:'1'
+        drivingExperience:'1',
+        location:'City'
     });
     expect(response.statusCode).toEqual(200);
     done();
@@ -37,8 +39,8 @@ describe('Driver Post endpoints', () => {
    Input:  
    Expected output : JSON returned with 400 status
  */
- it('Check if it returns status 400 because password is not provided', async (done) => {
-   const response = await request(app).post('/api/bookers').send({
+ it('Check if it returns status 400 as no input provided', async (done) => {
+   const response = await request(app).post('/api/drivers').send({
      
    });
    expect(response.statusCode).toEqual(400);
@@ -53,11 +55,12 @@ describe('Driver Post endpoints', () => {
          Rate: cost per kms,
          licenseIssuedDate: date,
          carType:car type,
-         drivingExperience:experience in years
+         drivingExperience:experience in years,
+         location:city name
   Expected output : JSON returned with 400 status
 */
-it('Check if it returns status 400 because password is not provided', async (done) => {
-  const response = await request(app).post('/api/bookers').send({
+it('Check if it returns status 400 because name is not provided', async (done) => {
+  const response = await request(app).post('/api/drivers').send({
         Email:'test@email.com',
         Password: 'test',
         ConfirmPassword:'test',
@@ -65,6 +68,7 @@ it('Check if it returns status 400 because password is not provided', async (don
         licenseIssuedDate: 'date',
         carType:'car type',
         drivingExperience:'1',
+        location:'City'
   });
   expect(response.statusCode).toEqual(400);
   done();
@@ -78,11 +82,12 @@ Input:  Name:test driver,
         Rate: cost per kms,
         licenseIssuedDate: date,
         carType:car type,
-        drivingExperience:experience in years
+        drivingExperience:experience in years,
+        location:city name
 Expected output : JSON returned with 400 status
 */
 it('Check if it returns status 400 because password is not provided', async (done) => {
-const response = await request(app).post('/api/bookers').send({
+const response = await request(app).post('/api/drivers').send({
       Name:'test driver',
       Email:'test@email.com',
       ConfirmPassword:'test',
@@ -90,6 +95,7 @@ const response = await request(app).post('/api/bookers').send({
       licenseIssuedDate: 'date',
       carType:'car type',
       drivingExperience:'1',
+      location:'City'
 });
 expect(response.statusCode).toEqual(400);
 done();
@@ -104,11 +110,12 @@ Input : Name: Test Driver,
         Rate: cost per kms,
         licenseIssuedDate: date,
         carType:car type,
-        drivingExperience:experience in years
+        drivingExperience:experience in years,
+        location:city name
 Expected output : JSON returned with 400 status 
 */
-it('Should create a new user and return a web token', async (done) => {
-const response = await request(app).post('/api/bookers').send({
+it('Check if it returns status 400 as both passwords does not match', async (done) => {
+const response = await request(app).post('/api/drivers').send({
         Name: 'Test Driver',
         Email:'test@email.com',
         Password: 'test',
@@ -116,7 +123,8 @@ const response = await request(app).post('/api/bookers').send({
         Rate:'cost per kms',
         licenseIssuedDate: 'date',
         carType:'car type',
-        drivingExperience:'1'
+        drivingExperience:'1',
+        location:'City'
 });
 expect(response.statusCode).toEqual(400);
 done();
@@ -130,18 +138,20 @@ Input : Name: Test Driver,
         ConfirmPassword:test,
         licenseIssuedDate: date,
         carType:car type,
-        drivingExperience:experience in years
+        drivingExperience:experience in years,
+        location:city name
 Expected output : JSON returned with 400 status 
 */
-it('Should create a new user and return a web token', async (done) => {
-const response = await request(app).post('/api/bookers').send({
+it('Check if it returns status 400 because rate is not provided', async (done) => {
+const response = await request(app).post('/api/drivers').send({
         Name: 'Test Driver',
         Email:'test@email.com',
         Password: 'test',
         ConfirmPassword:'test',
         licenseIssuedDate: 'date',
         carType:'car type',
-        drivingExperience:'1'
+        drivingExperience:'1',
+        location:'City'
 });
 expect(response.statusCode).toEqual(400);
 done();
@@ -155,23 +165,24 @@ Input : Name: Test Driver,
         ConfirmPassword:,
         Rate: cost per kms,
         carType:car type,
-        drivingExperience:experience in years
+        drivingExperience:experience in years,
+        location:city name
 Expected output : JSON returned with 400 status 
 */
-it('Should create a new user and return a web token', async (done) => {
-const response = await request(app).post('/api/bookers').send({
+it('Check if it returns status 400 because licenseUssuedDate is not provided', async (done) => {
+const response = await request(app).post('/api/drivers').send({
         Name: 'Test Driver',
         Email:'test@email.com',
         Password: 'test',
         ConfirmPassword:'',
         Rate:'cost per kms',
         carType:'car type',
-        drivingExperience:'1'
+        drivingExperience:'1',
+        location:'City'
 });
 expect(response.statusCode).toEqual(400);
 done();
 });
-
 /*@test Test Case 8
 Description  : Chect it fails if carType is not provided
 Input : Name: Test Driver,
@@ -180,18 +191,20 @@ Input : Name: Test Driver,
         ConfirmPassword:,
         Rate: cost per kms,
         licenseIssuedDate: date,
-        drivingExperience:experience in years
+        drivingExperience:experience in years,
+        location:city name,
 Expected output : JSON returned with 400 status 
 */
-it('Should create a new user and return a web token', async (done) => {
-const response = await request(app).post('/api/bookers').send({
+it('Check if it returns status 400 because carType is not provided', async (done) => {
+const response = await request(app).post('/api/drivers').send({
         Name: 'Test Driver',
         Email:'test@email.com',
         Password: 'test',
         ConfirmPassword:'',
         Rate:'cost per kms',
         licenseIssuedDate: 'date',
-        drivingExperience:'1'
+        drivingExperience:'1',
+        location:'City'
 });
 expect(response.statusCode).toEqual(400);
 done();
@@ -206,10 +219,11 @@ Input : Name: Test Driver,
         Rate: cost per kms,
         licenseIssuedDate: date,
         carType:car type,
+        location:city name
 Expected output : JSON returned with 400 status 
 */
-it('Should create a new user and return a web token', async (done) => {
-const response = await request(app).post('/api/bookers').send({
+it('Check if it returns status 400 because drivingExperience is not provided', async (done) => {
+const response = await request(app).post('/api/drivers').send({
         Name: 'Test Driver',
         Email:'test@email.com',
         Password: 'test',
@@ -217,6 +231,34 @@ const response = await request(app).post('/api/bookers').send({
         Rate:'cost per kms',
         licenseIssuedDate: 'date',
         carType:'car type',
+        location:'City'
+});
+expect(response.statusCode).toEqual(400);
+done();
+});
+
+/*@test Test Case 9
+Description  : Chect it fails if location not provided
+Input : Name: Test Driver,
+        Email:test@email.com,
+        Password: test,
+        ConfirmPassword:,
+        Rate: cost per kms,
+        licenseIssuedDate: date,
+        carType:car type,
+        drivingExperience:experience in years,
+Expected output : JSON returned with 400 status 
+*/
+it('Check if it returns status 400 because location is not provided', async (done) => {
+const response = await request(app).post('/api/drivers').send({
+        Name: 'Test Driver',
+        Email:'test@email.com',
+        Password: 'test',
+        ConfirmPassword:'',
+        Rate:'cost per kms',
+        licenseIssuedDate: 'date',
+        carType:'car type',
+        drivingExperience:experience in years,
 });
 expect(response.statusCode).toEqual(400);
 done();
