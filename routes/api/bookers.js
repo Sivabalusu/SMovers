@@ -5,12 +5,12 @@ const routeAuth = require('../../middleware/auth');
 const bcrypt = require('bcryptjs');
 const Booker = require('../../models/Booker');
 const Driver = require('../../models/Driver');
-const Availability = require('../../models/Availability');
-const config = require('config');
+const {Bookings} = require('../../models/Booking');
 const fn = require('../../libs/functions');
 const router = express.Router();
 
 const { check, validationResult } = require('express-validator');
+const { on } = require('../../models/Booker');
 
 // @route Post api/bookers
 // @desc create/register booker
@@ -323,4 +323,25 @@ router.post("/updatePassword",routeAuth,[
     }
   }
 );
+
+// @route GET api/bookers/bookings
+// @desc view previous bookings
+// @access Public
+router.get("/bookings",routeAuth,async (req,res)=>{
+    try{
+      //get booker email from the id 
+      const booker = await Booker.findById({_id:req.user.id});
+      //find bookings of the user logged in
+      const bookings = await Bookings.find({bookerEmail:booker.email});
+      if(bookings.length > 0)
+        res.status(200).json(bookings[0].bookings);
+      else
+      res.status(400).json({errors:[{msg:"No bookings found!"}]});
+    }catch(err){
+      //something happened at the server side
+      res.status(500).json({ errors: [{ msg: err.message }] });
+    }
+  }
+);
+
 module.exports = router;
