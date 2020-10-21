@@ -9,6 +9,8 @@ const bcrypt = require('bcryptjs');
 const config = require('config');
 const fn = require('../../libs/functions');
 
+const auth=require('../../middleware/auth');
+
 // @route  POST api/drivers
 // @desc   Register router
 // @access Public
@@ -26,7 +28,9 @@ router.post(
         }),
         check('rate','Rate (cost/km) is required').not().isEmpty(),
         check('licenseIssuedDate','License issued date is mandatory').not().isEmpty(),
-
+        check('carType','Have to enter your car type').not().isEmpty(),
+        check('drivingExperience', 'Driving experience in years is required').not().isEmpty(),
+        check('location','Location (city) is required').not().isEmpty(),
     ], 
     async(req, res) => {
     //when request is received, validate the driver data before proceeding further
@@ -38,7 +42,7 @@ router.post(
       //if data is correct, add the driver
       try {
         //destructure the parameters
-        const {name,password,rate,licenseIssuedDate} = req.body;
+        const {name,password,rate,licenseIssuedDate,carType,drivingExperience,location} = req.body;
         let {email} = req.body;
         email = email.toLowerCase();
         //find whether driver with entered email has already registered
@@ -49,7 +53,7 @@ router.post(
             return res.status(400).json({ errors: [{ msg: 'Driver already exists in the system' }] });
         }
         //if this is the new driver then create new driver
-        driver=new Driver({name,email,password,rate,licenseIssuedDate,});
+        driver=new Driver({name,email,password,rate,licenseIssuedDate,carType,drivingExperience,location});
 
         //generate salt and hash the password of the drvier for protection
         const hashSalt = await bcrypt.genSalt(10);
@@ -128,6 +132,30 @@ router.post(
       }
     }
 );
+
+// @route GET api/driver/view/:driver_id
+// @desc View Driver Profile functionality by using jwt login token
+// @access private
+// router.get('/view/:driver_id', auth, async(req,res) =>{
+//   try{
+//     const id=req.params.driver_id;
+//     //pass the driver_id as parameter
+//     const driver = await Driver.findOne({_id:id}).select('-password');
+//     if(!driver){
+//       //if there is no driver data
+//       return res.status(400).json({msg:'Driver data not found'});
+//     }
+//     //send driver data as response
+//     res.json(driver);
+//   }
+//   catch(err){
+//     console.error(err.message);
+//     if(err.kind=='ObjectId'){
+//       return res.status(400).json({msg:'Driver data not found'});
+//     }
+//     res.status(500).send('Server Error');
+//   }
+// });
 
 // @route POST api/drivers/update
 // @desc View driver profile functionality by using jwt login token
@@ -252,7 +280,6 @@ router.delete('/', routeAuth, async(req, res) =>{
         return res.status(200).json(driver);
       }
       //when user enters wrong password while deleting the account
-      return res.status(400).json({errors:[{msg:"Incorrect Password!"}]})
       return res.status(401).json({errors:[{msg:"Incorrect Password!"}]})
     }
     return res.status(400).json({errors:[{msg:"Cannot find the driver!"}]})
