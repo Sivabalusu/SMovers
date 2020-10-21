@@ -192,16 +192,23 @@ router.post('/updatePassword', auth, async(req,res) =>{
    //get the user containing the id from the request which we got after routeAuth was run
    let helper = req.user;
     //read the updates from request body
-    const {oldPassword, newPassword}=req.body;
-    const password=newPassword;
-    const options= {new:true};
+    const {oldPassword,newPassword}=req.body;
+    if(oldPassword===newPassword)
+    {
+      return res.status(401).json({errors:[{msg:"New Password must not equal to old password"}]});
+    }
     helper = await Helper.findById(helper.id);
+    console.log(helper.id);
     if(helper){
-      // check if the password entered password is correct or not by using bcrypt
+      // check if the password and entered password is correct or not by using bcrypt
       const valid = await bcrypt.compare(oldPassword, helper.password);
       if(valid){
-        helper = await Helper.findByIdAndUpdate(helper.id,password,options);;
-        //return the deleted user for demonstrating purposes
+        const hashSalt = await bcrypt.genSalt(10);
+        const password = await bcrypt.hash(newPassword, hashSalt);
+        //update the password and save it to database
+       helper.password=password;
+       helper.save();
+        //return the updated user for demonstrating purposes
         return res.status(200).json(helper);
       }
       //when user enters wrong password while deleting the account
