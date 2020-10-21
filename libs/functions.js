@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const config = require('config');
 const BlackList = require('../models/BlackList');
+const Availability = require('../models/Availability');
 //@desc Add any functions separated from API routes
 
 module.exports = {

@@ -6,12 +6,12 @@ const bcrypt = require('bcryptjs');
 const Booker = require('../../models/Booker');
 const Driver = require('../../models/Driver');
 const Helper = require('../../models/Helper');
-const Availability = require('../../models/Availability');
-const config = require('config');
+const {Bookings} = require('../../models/Booking');
 const fn = require('../../libs/functions');
 const router = express.Router();
 
 const { check, validationResult } = require('express-validator');
+const { on } = require('../../models/Booker');
 
 // @route Post api/bookers
 // @desc create/register booker
@@ -174,7 +174,6 @@ router.delete('/', routeAuth, async (req, res) => {
     res.status(500).json({ errors: [{ msg: err.message }] });
   }
 });
-module.exports = router;
 
 // @route GET api/bookers/drivers
 // @desc fetch the available drivers
@@ -264,3 +263,121 @@ router.get('/searchHelpers',async (req,res)=>{
     res.status(500).json({ errors: [{ msg: err.message }] });
   }
 });
+=======
+// @route POST api/bookers/update
+// @desc update user data 
+// @access Public
+router.post("/update",routeAuth,[
+    //validate the request parameters sent by the client
+    check('email', 'Enter a valid email').isEmail(), //use validator to validate an email
+    check('phone',"Invalid phone number!").custom((value)=>{  
+      if(typeof value != typeof undefined)
+      {
+        return /^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/.test(value);
+      }
+      return true;      
+    })
+  ],async (req,res)=>{
+      //when request is received, validate the user data before proceeding further
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        //if there were some errors in the data received send the 400 response with the error message
+        return res.status(400).json({ errors: errors.array() });
+      }else{
+        try{
+          const {phone} = req.body;
+          const user = req.user;
+          //check if the user already exists with the email id
+          let {email} = req.body;
+          email = email.toLowerCase();
+          //find the user with the email entered
+          let booker = await Booker.findOne({ email });
+
+          //if the booker already exists in the system then return from here
+          if (booker && booker.id != user.id) {
+            return res
+              .status(400)
+              .json({ errors: [{ msg: 'Another account already exists with this email!' }] });
+          }
+          //update the user with new email and phone
+          await Booker.findByIdAndUpdate({_id:user.id},{$set:{email,phone}})
+          booker = await Booker.findById({_id:user.id});
+          return res.status(200).json(booker);
+        }catch(err){
+          //something happened at the server side
+          res.status(500).json({ errors: [{ msg: err.message }] });
+        }
+      }
+    }
+);
+// @route POST api/bookers/updatePassword
+// @desc update user password 
+// @access Public
+router.post("/updatePassword",routeAuth,[
+  //validate the request parameters sent by the client
+  check('currentPassword','Current password required!').not().isEmpty(),
+  check('password', 'Password should have at least 8 chars!').custom((value)=>{
+    return !(typeof value == typeof undefined || value == null || value.length < 8);
+  }),
+  check('confirmPassword','Passwords do not match!').custom((value,{req})=>{
+    return value == req.body.password;
+  }),
+  check('currentPassword','Current and new passwords cannot be same!').custom((value,{req})=>{
+    return !(value == req.body.password)
+  })
+  ],async (req,res)=>{
+    //when request is received, validate the user data before proceeding further
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      //if there were some errors in the data received send the 400 response with the error message
+      return res.status(400).json({ errors: errors.array() });
+    }else{
+      try{
+        const {currentPassword} = req.body;
+        let {password} = req.body;
+        //check the current password of the user before updating the data with new password
+        let booker = await Booker.findById({_id:req.user.id});
+        const valid = await bcrypt.compare(currentPassword, booker.password);
+
+        if (!valid) {
+          return res.status(400).json({ errors: [{ msg: 'Current password is incorrect!' }] });
+        }
+        //generate salt and hash the password of the user for protection
+        //do not change the value from 10 as it will take more computation power and time
+        const hashSalt = await bcrypt.genSalt(10);
+        password = await bcrypt.hash(password, hashSalt);
+
+        //update the booker's password 
+        booker = await (await Booker.findByIdAndUpdate({_id:booker.id},{$set:{password}}));
+        booker = ({...booker}._doc);
+        delete booker.password;
+        return res.status(200).json(booker);
+      }catch(err){
+        //something happened at the server side
+        res.status(500).json({ errors: [{ msg: err.message }] });
+      }
+    }
+  }
+);
+
+// @route GET api/bookers/bookings
+// @desc view previous bookings
+// @access Public
+router.get("/bookings",routeAuth,async (req,res)=>{
+    try{
+      //get booker email from the id 
+      const booker = await Booker.findById({_id:req.user.id});
+      //find bookings of the user logged in
+      const bookings = await Bookings.find({bookerEmail:booker.email});
+      if(bookings.length > 0)
+        res.status(200).json(bookings[0].bookings);
+      else
+      res.status(400).json({errors:[{msg:"No bookings found!"}]});
+    }catch(err){
+      //something happened at the server side
+      res.status(500).json({ errors: [{ msg: err.message }] });
+    }
+  }
+);
+
+module.exports = router;
