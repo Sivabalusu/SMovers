@@ -29,6 +29,10 @@ const HelperSchema = new mongoose.Schema({
       type:Number,
       default:0,
   },
+  location:{
+    type:String,
+    required:true
+  }
 });
 
 module.exports = Helper = mongoose.model('helper', HelperSchema);

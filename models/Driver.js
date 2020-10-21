@@ -32,6 +32,9 @@ const DriverSchema = new mongoose.Schema({
       type:Date,
       required:true,
   },
+  licenseClass:{
+    type:String,
+  },
   carType:{
     type:String,
     required:true,
@@ -39,7 +42,12 @@ const DriverSchema = new mongoose.Schema({
   drivingExperience:{
     type:Number,
     required:true,
+  },
+  location:{
+    type:String,
+    required:true
   }
+
 });
 
 module.exports = Driver = mongoose.model('driver', DriverSchema);
