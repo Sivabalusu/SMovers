@@ -19,6 +19,9 @@ const BookerSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  phone:{
+    type: String,
+  }
 });
 
 module.exports = Booker = mongoose.model('booker', BookerSchema);
