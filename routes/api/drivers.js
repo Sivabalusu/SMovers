@@ -129,6 +129,97 @@ router.post(
     }
 );
 
+// @route POST api/drivers/update
+// @desc View driver profile functionality by using jwt login token
+// @access public
+router.post('/update', routeAuth, async(req,res) =>{
+  try{
+   //get the user containing the id from the request which we got after routeAuth was run
+   let driver = req.user;
+    //read the updates from request body
+    const updates=req.body;
+    driver = await Driver.findById(driver.id);
+    //in mongoose, the updated values won't appear immediately current post request
+    //to get new updated values to post request we need to set options to true
+    const options= {new:true};
+    update = await Driver.findByIdAndUpdate(driver.id,updates,options);
+    if(!update){
+      //If there is no driver data
+      return res.status(400).json({msg:'Update failed'});
+    }
+    //send driver data as response
+    res.json(update);
+  }
+  catch(err){
+    console.error(err.message);
+    if(err.kind=='ObjectId'){
+      return res.status(400).json({msg:'Update failed'});
+    }
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route POST api/drivers/updatePassword
+// @desc View driver profile functionality by using jwt login token
+// @access public
+router.post('/updatePassword', routeAuth,[
+  //validate the request parameters sent by the client
+  check('oldPassword','Current password required!').not().isEmpty(),
+  check('newPassword', 'Password should have at least 8 chars!').custom((value)=>{
+    return !(typeof value == typeof undefined || value == null || value.length < 8);
+  }),
+  check('confirmPassword','Passwords do not match!').custom((value,{req})=>{
+    return value == req.body.newPassword;
+  }),
+  check('oldPassword','Current and new passwords cannot be same!').custom((value,{req})=>{
+    return !(value == req.body.newPassword)
+  })
+], async(req,res) =>{
+    //when request is received, validate the user data before proceeding further
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      //if there were some errors in the data received send the 400 response with the error message
+      return res.status(400).json({ errors: errors.array() });
+    }else{
+    try{
+    //get the user containing the id from the request which we got after routeAuth was run
+    let driver = req.user;
+      //read the updates from request body
+      const {oldPassword, newPassword}=req.body;
+      if(oldPassword===newPassword)
+      {
+        return res.status(401).json({errors:[{msg:"New Password must not equal to old password"}]});
+      }
+      driver = await Driver.findById(driver.id);
+      console.log(driver.id);
+      if(driver){
+        // check if the password and entered password is correct or not by using bcrypt
+        const valid = await bcrypt.compare(oldPassword, driver.password);
+        if(valid){
+          const hashSalt = await bcrypt.genSalt(10);
+          const password = await bcrypt.hash(newPassword, hashSalt);
+          //update the password and save it to database
+        driver.password=password;
+        driver.save();
+          //return the updated user for demonstrating purposes
+          return res.status(200).json(driver);
+        }
+        //when user enters wrong password while deleting the account
+        return res.status(401).json({errors:[{msg:"Incorrect Password!"}]})
+      }
+      return res.status(400).json({errors:[{msg:"Cannot find the driver!"}]})
+    
+    }
+    catch(err){
+      console.error(err.message);
+      if(err.kind=='ObjectId'){
+        return res.status(400).json({msg:'Update failed'});
+      }
+      res.status(500).send('Server Error');
+    }
+  }  
+});
+
 // @route GET api/driver/logout
 // @desc logout functionality by checking the blacklist jwt
 // @access Public
