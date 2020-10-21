@@ -187,42 +187,56 @@ router.post('/update', auth, async(req,res) =>{
 // @route POST api/helpers/updatePassword
 // @desc View helper profile functionality by using jwt login token
 // @access public
-router.post('/updatePassword', auth, async(req,res) =>{
-  try{
-   //get the user containing the id from the request which we got after routeAuth was run
-   let helper = req.user;
-    //read the updates from request body
-    const {oldPassword,newPassword}=req.body;
-    if(oldPassword===newPassword)
-    {
-      return res.status(401).json({errors:[{msg:"New Password must not equal to old password"}]});
-    }
-    helper = await Helper.findById(helper.id);
-    console.log(helper.id);
-    if(helper){
-      // check if the password and entered password is correct or not by using bcrypt
-      const valid = await bcrypt.compare(oldPassword, helper.password);
-      if(valid){
-        const hashSalt = await bcrypt.genSalt(10);
-        const password = await bcrypt.hash(newPassword, hashSalt);
-        //update the password and save it to database
-       helper.password=password;
-       helper.save();
-        //return the updated user for demonstrating purposes
-        return res.status(200).json(helper);
+router.post('/updatePassword', auth, [
+  //validate the request parameters sent by the client
+  check('oldPassword','Current password required!').not().isEmpty(),
+  check('newPassword', 'Password should have at least 8 chars!').custom((value)=>{
+    return !(typeof value == typeof undefined || value == null || value.length < 8);
+  }),
+  check('confirmPassword','Passwords do not match!').custom((value,{req})=>{
+    return value == req.body.newPassword;
+  }),
+  check('oldPassword','Current and new passwords cannot be same!').custom((value,{req})=>{
+    return !(value == req.body.newPassword)
+  })
+  ],async(req,res) =>{
+    //when request is received, validate the user data before proceeding further
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      //if there were some errors in the data received send the 400 response with the error message
+      return res.status(400).json({ errors: errors.array() });
+    }else{
+    try{
+    //get the user containing the id from the request which we got after routeAuth was run
+    let helper = req.user;
+      //read the updates from request body
+      const {oldPassword,newPassword}=req.body;
+      helper = await Helper.findById(helper.id);
+      if(helper){
+        // check if the password and entered password is correct or not by using bcrypt
+        const valid = await bcrypt.compare(oldPassword, helper.password);
+        if(valid){
+          const hashSalt = await bcrypt.genSalt(10);
+          const password = await bcrypt.hash(newPassword, hashSalt);
+          //update the password and save it to database
+          helper.password=password;
+          helper.save();
+          //return the updated user for demonstrating purposes
+          return res.status(200).json(helper);
+        }
+        //when user enters wrong password while deleting the account
+        return res.status(401).json({errors:[{msg:"Incorrect Password!"}]})
       }
-      //when user enters wrong password while deleting the account
-      return res.status(401).json({errors:[{msg:"Incorrect Password!"}]})
+      return res.status(400).json({errors:[{msg:"Cannot find the Helper!"}]})
+    
     }
-    return res.status(400).json({errors:[{msg:"Cannot find the Helper!"}]})
-   
-  }
-  catch(err){
-    console.error(err.message);
-    if(err.kind=='ObjectId'){
-      return res.status(400).json({msg:'Update failed'});
+    catch(err){
+      console.error(err.message);
+      if(err.kind=='ObjectId'){
+        return res.status(400).json({msg:'Update failed'});
+      }
+      res.status(500).send('Server Error');
     }
-    res.status(500).send('Server Error');
   }
 });
 
