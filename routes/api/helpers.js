@@ -241,7 +241,6 @@ router.post('/updatePassword', auth, [
   }
 });
 
-
 // @route Post api/helpers/logout
 // @desc logout functionality by checking the blacklist jwt
 // @access Public

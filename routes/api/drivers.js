@@ -53,7 +53,7 @@ router.post(
             return res.status(400).json({ errors: [{ msg: 'Driver already exists in the system' }] });
         }
         //if this is the new driver then create new driver
-        driver=new Driver({name,email,password,rate,licenseIssuedDate,carType,drivingExperience,location});
+        driver=new Driver({name,email,password,rate,licenseIssuedDate,carType,drivingExperience});
 
         //generate salt and hash the password of the drvier for protection
         const hashSalt = await bcrypt.genSalt(10);
@@ -158,7 +158,7 @@ router.post(
 // });
 
 // @route POST api/drivers/update
-// @desc View driver profile functionality by using jwt login token
+// @desc Update driver profile functionality
 // @access public
 router.post('/update', routeAuth, async(req,res) =>{
   try{
