@@ -1,6 +1,7 @@
 //APIs related to a helper, someone who is booked as a helper by a booker
 
 const express = require('express');
+const routeAuth = require('../../middleware/auth');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
@@ -257,17 +258,31 @@ router.get('/logout', async (req, res) => {
 // @route Delete api/helper
 // @desc delete functionality to delete the helper profile.
 // @access Public
-// router.delete('/', routeAuth, async(req, res) =>{
-//   try{
-//     // finds the helper by its email and perform the delete action to delete the helper profile.
-//     h = await Helper.findOneAndRemove({ email : req.helper.email });
-//     console.log(h);
-//     // res.status(500).json({ errors: [{ msg: err.message }] });
-//   } catch (err) {
-//     //prints the error message if it fails to delete the helper profile.
-//     console.error(err.message);
-//     res.status(500).send('Server Error');
-//   }
-// });
+router.delete('/', routeAuth, async(req, res) =>{
+  try{
+    //get the user containing the id from the request which we got after routeAuth was run
+    let helper = req.user;
+    const {password} = req.body;
+    //get the user data from the database so that we can check whether the password user entered is right or not
+    helper = await Helper.findById(helper.id);
+    if(helper){
+      // check if the password entered password is correct or not by using bcrypt
+      const valid = await bcrypt.compare(password, helper.password);
+      if(valid){
+        helper = await Helper.findByIdAndDelete(helper.id);
+        //return the deleted user for demonstrating purposes
+        return res.status(200).json(helper);
+      }
+      //when user enters wrong password while deleting the account
+      return res.status(400).json({errors:[{msg:"Incorrect Password!"}]})
+      return res.status(401).json({errors:[{msg:"Incorrect Password!"}]})
+    }
+    return res.status(400).json({errors:[{msg:"Cannot find the helper!"}]})
+  } catch (err) {
+    //prints the error message if it fails to delete the helper profile.
+    console.error(err.message);
+    res.status(500).json({errors: [{msg: err.message}] });
+  }
+});
 
 module.exports = router;
