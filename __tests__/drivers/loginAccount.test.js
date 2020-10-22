@@ -7,14 +7,14 @@ describe('Driver Post endpoints', () => {
     /*@test Test Case 1
         Description  : Check the actual functionality by providing email and password
         Input : Email:test@email.com,
-                Password: test,
+                Password: testpassword,
         Expected output : JSON returned with 200 status 
     */
 
    it('Should login user to system and return a web token', async (done) => {
     const response = await request(app).post('/api/drivers/login').send({
-        Email:'test@email.com',
-        Password: 'test',
+        email:'driver4@gmail.com',
+        password: '12356789',
     });
     expect(response.statusCode).toEqual(200);
     done();
@@ -26,9 +26,9 @@ describe('Driver Post endpoints', () => {
      Expected output : JSON returned with 400 status 
     */
 
-    it('Should login user to system and return a web token', async (done) => {
+    it('Check it fails as user does not provide password', async (done) => {
     const response = await request(app).post('/api/drivers/login').send({
-        Email:'test@email.com',
+        email:'test@email.com',
     });
     expect(response.statusCode).toEqual(400);
     done();
@@ -36,13 +36,57 @@ describe('Driver Post endpoints', () => {
 
     /*@test Test Case 3
     Description  : Check it fails if no email provided
-    Input : Password: test password,
+    Input : Password: test,
      Expected output : JSON returned with 400 status 
     */
     
-    it('Should login user to system and return a web token', async (done) => {
+    it('Check it fails as user does not provide email', async (done) => {
     const response = await request(app).post('/api/drivers/login').send({
-        Password: 'test',
+        password: 'testpassword',
+    });
+    expect(response.statusCode).toEqual(400);
+    done();
+    });
+
+    /*@test Test Case 4
+    Description  : Check it fails if no email and password provided
+    Input :
+     Expected output : JSON returned with 400 status 
+    */
+    
+    it('Check it fails as user does not provide email and password', async (done) => {
+    const response = await request(app).post('/api/drivers/login').send({});
+    expect(response.statusCode).toEqual(400);
+    done();
+    });
+
+    /*@test Test Case 5
+    Description  : Check it fails if user provides incorrect email and password
+    Input : Email:test123@gmail.com
+            Password: test123,
+     Expected output : JSON returned with 400 status 
+    */
+    
+    it('Check it fails if user provides incorrect email and password', async (done) => {
+    const response = await request(app).post('/api/drivers/login').send({
+        email:'test123@gmail.com',
+        password: 'test123',
+    });
+    expect(response.statusCode).toEqual(400);
+    done();
+    });
+
+    /*@test Test Case 6
+    Description  : Check it fails if user provides incorrect email format 
+    Input : Email:test
+            Password: test,
+     Expected output : JSON returned with 400 status 
+    */
+    
+    it('Check it fails if user provides incorrect email format', async (done) => {
+    const response = await request(app).post('/api/drivers/login').send({
+        email:'test',
+        password: 'testpassword',
     });
     expect(response.statusCode).toEqual(400);
     done();

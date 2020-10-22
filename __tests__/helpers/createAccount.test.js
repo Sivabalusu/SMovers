@@ -5,8 +5,8 @@ const request = require('supertest');
 
 describe('Helper Post endpoints', () => {
   /*@test Test Case 1
-    Description  : Check the actual functionality by providing name, email, password (twice),rate, 
-                    licenscIssuedDate, carType, drivingExperience
+    Description  : Check the actual functionality by providing name, email, password (twice),rate,location
+                    l
     Input : Name: Test Helper,
             Email:test@email.com,
             Password: test,
@@ -17,14 +17,21 @@ describe('Helper Post endpoints', () => {
   */
   it('Should create a new user and return a web token', async (done) => {
     const response = await request(app).post('/api/helpers').send({
-        Name: 'Test Helper',
-        Email:'test@email.com',
-        Password: 'test',
-        ConfirmPassword:'test',
-        Rate:'cost per kms',
+        name: 'Test Helper',
+        email:'test@email.com',
+        password: 'testpassword',
+        confirmPassword:'testpassword',
+        rate:5,
         location:'City'
     });
-    expect(response.statusCode).toEqual(200);
+    if(response.statusCode == 200)
+    {
+      response = await request(app).get('/api/auth/3').set('x-auth-token',response.body.token);
+      expect(response.statusCode).toEqual(200);
+      done();
+      return;
+    }
+    expect(response.statusCode).toEqual(400);
     done();
   });
 
@@ -52,11 +59,11 @@ describe('Helper Post endpoints', () => {
 */
 it('Check if it returns status 400 because name is not provided', async (done) => {
   const response = await request(app).post('/api/helpers').send({
-        Email:'test@email.com',
-        Password: 'test',
-        ConfirmPassword:'test',
-        Rate:'cost per kms',
-        location:'City'
+    email:'test@email.com',
+    password: 'testpassword',
+    confirmPassword:'testpassword',
+    rate:5,
+    location:'City'
   });
   expect(response.statusCode).toEqual(400);
   done();
@@ -73,11 +80,11 @@ Expected output : JSON returned with 400 status
 */
 it('Check if it returns status 400 because password is not provided', async (done) => {
 const response = await request(app).post('/api/helpers').send({
-      Name:'test Helper',
-      Email:'test@email.com',
-      ConfirmPassword:'test',
-      Rate:'cost per kms',
-      location:'City'
+  name: 'Test Helper',
+  email:'test@email.com',
+  confirmPassword:'testpassword',
+  rate:5,
+  location:'City'
 });
 expect(response.statusCode).toEqual(400);
 done();
@@ -95,12 +102,12 @@ Expected output : JSON returned with 400 status
 */
 it('Check if it returns status 400 as both passwords does not match', async (done) => {
 const response = await request(app).post('/api/helpers').send({
-        Name: 'Test Helper',
-        Email:'test@email.com',
-        Password: 'test',
-        ConfirmPassword:'',
-        Rate:'cost per kms',
-        location:'City'
+    name: 'Test Helper',
+    email:'test@email.com',
+    password: 'testpassword',
+    confirmPassword:'',
+    rate:5,
+    location:'City'
 });
 expect(response.statusCode).toEqual(400);
 done();
@@ -117,11 +124,11 @@ Expected output : JSON returned with 400 status
 */
 it('Check if it returns status 400 because rate is not provided', async (done) => {
 const response = await request(app).post('/api/helpers').send({
-        Name: 'Test Helper',
-        Email:'test@email.com',
-        Password: 'test',
-        ConfirmPassword:'test',
-        location:'City'
+    name: 'Test Helper',
+    email:'test@email.com',
+    password: 'testpassword',
+    confirmPassword:'testpassword',
+    location:'City'
 });
 expect(response.statusCode).toEqual(400);
 done();
@@ -136,13 +143,13 @@ Input : Name: Test Helper,
         Rate: cost per kms,
 Expected output : JSON returned with 400 status 
 */
-it('Should create a new user and return a web token', async (done) => {
+it('Check if it returns status 400 because location is not provided', async (done) => {
 const response = await request(app).post('/api/helpers').send({
-        Name: 'Test Helper',
-        Email:'test@email.com',
-        Password: 'test',
-        ConfirmPassword:'',
-        Rate:'cost per kms',
+        name: 'Test Helper',
+        email:'test@email.com',
+        password: 'testpassword',
+        confirmPassword:'',
+        rate:5,
 });
 expect(response.statusCode).toEqual(400);
 done();
