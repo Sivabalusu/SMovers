@@ -5,8 +5,8 @@ const request = require('supertest');
 
 describe('Helper Post endpoints', () => {
   /*@test Test Case 1
-    Description  : Check the actual functionality by providing name, email, password (twice),rate, 
-                    licenscIssuedDate, carType, drivingExperience
+    Description  : Check the actual functionality by providing name, email, password (twice),rate,location
+                    l
     Input : Name: Test Helper,
             Email:test@email.com,
             Password: test,
@@ -21,7 +21,7 @@ describe('Helper Post endpoints', () => {
         Email:'test@email.com',
         Password: 'test',
         ConfirmPassword:'test',
-        Rate:'cost per kms',
+        Rate:5,
         location:'City'
     });
     expect(response.statusCode).toEqual(200);
@@ -55,7 +55,7 @@ it('Check if it returns status 400 because name is not provided', async (done) =
         Email:'test@email.com',
         Password: 'test',
         ConfirmPassword:'test',
-        Rate:'cost per kms',
+        Rate:5,
         location:'City'
   });
   expect(response.statusCode).toEqual(400);
@@ -76,7 +76,7 @@ const response = await request(app).post('/api/helpers').send({
       Name:'test Helper',
       Email:'test@email.com',
       ConfirmPassword:'test',
-      Rate:'cost per kms',
+      Rate:5,
       location:'City'
 });
 expect(response.statusCode).toEqual(400);
@@ -99,7 +99,7 @@ const response = await request(app).post('/api/helpers').send({
         Email:'test@email.com',
         Password: 'test',
         ConfirmPassword:'',
-        Rate:'cost per kms',
+        Rate:4,
         location:'City'
 });
 expect(response.statusCode).toEqual(400);
@@ -142,7 +142,7 @@ const response = await request(app).post('/api/helpers').send({
         Email:'test@email.com',
         Password: 'test',
         ConfirmPassword:'',
-        Rate:'cost per kms',
+        Rate:5,
 });
 expect(response.statusCode).toEqual(400);
 done();
