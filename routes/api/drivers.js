@@ -9,8 +9,6 @@ const bcrypt = require('bcryptjs');
 const config = require('config');
 const fn = require('../../libs/functions');
 
-const auth=require('../../middleware/auth');
-
 // @route  POST api/drivers
 // @desc   Register router
 // @access Public
@@ -53,7 +51,7 @@ router.post(
             return res.status(400).json({ errors: [{ msg: 'Driver already exists in the system' }] });
         }
         //if this is the new driver then create new driver
-        driver=new Driver({name,email,password,rate,licenseIssuedDate,carType,drivingExperience});
+        driver=new Driver({name,email,password,rate,licenseIssuedDate,carType,drivingExperience,location,rating:0});
 
         //generate salt and hash the password of the drvier for protection
         const hashSalt = await bcrypt.genSalt(10);
@@ -149,7 +147,6 @@ router.post(
 //     res.json(driver);
 //   }
 //   catch(err){
-//     console.error(err.message);
 //     if(err.kind=='ObjectId'){
 //       return res.status(400).json({msg:'Driver data not found'});
 //     }
@@ -160,31 +157,43 @@ router.post(
 // @route POST api/drivers/update
 // @desc Update driver profile functionality
 // @access public
-router.post('/update', routeAuth, async(req,res) =>{
-  try{
-   //get the user containing the id from the request which we got after routeAuth was run
-   let driver = req.user;
-    //read the updates from request body
-    const updates=req.body;
-    driver = await Driver.findById(driver.id);
-    //in mongoose, the updated values won't appear immediately current post request
-    //to get new updated values to post request we need to set options to true
-    const options= {new:true};
-    update = await Driver.findByIdAndUpdate(driver.id,updates,options);
-    if(!update){
-      //If there is no driver data
-      return res.status(400).json({msg:'Update failed'});
+router.post('/update', routeAuth,[
+  //validate the request parameters sent by the client
+  check('email', 'Enter a valid email').isEmail(), //use validator to validate an email
+  ], async(req,res) =>{
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+    //if there were some errors in the data received send the 400 response with the error message
+    return res.status(400).json({ errors: errors.array() });
     }
-    //send driver data as response
-    res.json(update);
-  }
-  catch(err){
-    console.error(err.message);
-    if(err.kind=='ObjectId'){
-      return res.status(400).json({msg:'Update failed'});
+    try{
+    //get the user containing the id from the request which we got after routeAuth was run
+    let driver = req.user;
+      //read the updates from request body
+      const updates=req.body;
+      //if the driver already exists in the system then return from here
+      let existing = await Driver.find({ email:updates.email });
+      if (existing.length > 0 && existing[0]._id != driver.id) {
+        return res
+          .status(400)
+          .json({ errors: [{ msg: 'Another account already exists with this email!' }] });
+      }
+      //in mongoose, the updated values won't appear immediately current post request
+      //to get new updated values to post request we need to set options to true
+      const options= {new:true};
+      update = await Driver.findByIdAndUpdate(driver.id,updates,options);
+      if(!update){
+        //If there is no driver data
+        return res.status(400).json({msg:'Update failed'});
+      }
+      update = ({...update}._doc);
+      delete update.password;
+      //send driver data as response
+      res.status(200).json(update);
     }
-    res.status(500).send('Server Error');
-  }
+    catch(err){
+      res.status(500).send('Server Error');
+    }
 });
 
 // @route POST api/drivers/updatePassword
@@ -219,7 +228,6 @@ router.post('/updatePassword', routeAuth,[
         return res.status(401).json({errors:[{msg:"New Password must not equal to old password"}]});
       }
       driver = await Driver.findById(driver.id);
-      console.log(driver.id);
       if(driver){
         // check if the password and entered password is correct or not by using bcrypt
         const valid = await bcrypt.compare(oldPassword, driver.password);
@@ -227,8 +235,10 @@ router.post('/updatePassword', routeAuth,[
           const hashSalt = await bcrypt.genSalt(10);
           const password = await bcrypt.hash(newPassword, hashSalt);
           //update the password and save it to database
-        driver.password=password;
-        driver.save();
+          driver.password=password;
+          await driver.save();
+          driver = ({...driver}._doc);
+          delete driver.password;
           //return the updated user for demonstrating purposes
           return res.status(200).json(driver);
         }
@@ -239,10 +249,6 @@ router.post('/updatePassword', routeAuth,[
     
     }
     catch(err){
-      console.error(err.message);
-      if(err.kind=='ObjectId'){
-        return res.status(400).json({msg:'Update failed'});
-      }
       res.status(500).send('Server Error');
     }
   }  
@@ -276,6 +282,8 @@ router.delete('/', routeAuth, async(req, res) =>{
       const valid = await bcrypt.compare(password, driver.password);
       if(valid){
         driver = await Driver.findByIdAndDelete(driver.id);
+        driver = ({...driver}._doc);
+        delete driver.password;
         //return the deleted user for demonstrating purposes
         return res.status(200).json(driver);
       }
@@ -285,7 +293,6 @@ router.delete('/', routeAuth, async(req, res) =>{
     return res.status(400).json({errors:[{msg:"Cannot find the driver!"}]})
   } catch (err) {
     //prints the error message if it fails to delete the driver profile.
-    console.error(err.message);
     res.status(500).json({errors: [{msg: err.message}] });
   }
 });

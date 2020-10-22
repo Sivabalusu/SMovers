@@ -162,6 +162,8 @@ router.delete('/', routeAuth, async (req, res) => {
       const valid = await bcrypt.compare(password, booker.password);
       if(valid){
         booker = await Booker.findByIdAndDelete(booker.id);
+        booker = ({...booker}._doc);
+        delete booker.password;
         //return the deleted user for demonstrating purposes
         return res.status(200).json(booker);
       }
@@ -191,10 +193,6 @@ router.get('/driver/:driver_id', async(req,res) =>{
     res.json(driver);
   }
   catch(err){
-    console.error(err.message);
-    if(err.kind=='ObjectId'){
-      return res.status(400).json({msg:'Driver data not found'});
-    }
     res.status(500).send('Server Error');
   }
 });
@@ -216,10 +214,6 @@ router.get('/helper/:helper_id', async(req,res) =>{
     res.json(helper);
   }
   catch(err){
-    console.error(err.message);
-    if(err.kind=='ObjectId'){
-      return res.status(400).json({msg:'Helper data not found'});
-    }
     res.status(500).send('Server Error');
   }
 });
@@ -351,6 +345,8 @@ router.post("/update",routeAuth,[
           //update the user with new email and phone
           await Booker.findByIdAndUpdate({_id:user.id},{$set:{email,phone}})
           booker = await Booker.findById({_id:user.id});
+          booker = ({...booker}._doc);
+          delete booker.password;
           return res.status(200).json(booker);
         }catch(err){
           //something happened at the server side
@@ -425,10 +421,6 @@ router.get('/driver/:driver_id', async(req,res) =>{
     res.json(driver);
   }
   catch(err){
-    console.error(err.message);
-    if(err.kind=='ObjectId'){
-      return res.status(400).json({msg:'Driver data not found'});
-    }
     res.status(500).send('Server Error');
   }
 });
@@ -450,10 +442,6 @@ router.get('/helper/:helper_id', async(req,res) =>{
     res.json(helper);
   }
   catch(err){
-    console.error(err.message);
-    if(err.kind=='ObjectId'){
-      return res.status(400).json({msg:'Helper data not found'});
-    }
     res.status(500).send('Server Error');
   }
 });
@@ -463,7 +451,7 @@ router.get('/helper/:helper_id', async(req,res) =>{
 // @access Public
 router.get("/bookings",routeAuth,async (req,res)=>{
     try{
-      //get booker email from the id 
+      // get booker email from the id 
       const booker = await Booker.findById({_id:req.user.id});
       //find bookings of the user logged in
       const bookings = await Bookings.find({bookerEmail:booker.email});
