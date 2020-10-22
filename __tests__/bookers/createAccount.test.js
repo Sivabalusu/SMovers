@@ -12,12 +12,20 @@ describe('Booker Post endpoints', () => {
     Expected output : JSON returned with 200 status 
   */
   it('Should create a new user and return a web token', async (done) => {
-    const response = await request(app).post('/api/bookers').send({
+    let response = await request(app).post('/api/bookers').send({
       name: 'Test user',
       email: 'test@abc.com',
       password: 'test@abc.com',
+      confirmPassword: 'test@abc.com',
     });
-    expect(response.statusCode).toEqual(200);
+    if(response.statusCode == 200)
+    {
+      response = await request(app).get('/api/auth/1').set('x-auth-token',response.body.token);
+      expect(response.statusCode).toEqual(200);
+      done();
+      return;
+    }
+    expect(response.statusCode).toEqual(400);
     done();
   });
 
