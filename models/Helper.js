@@ -22,7 +22,7 @@ const HelperSchema = new mongoose.Schema({
   },
   rating:{
       type:Number,
-      min:1,
+      min:0,
       max:5,
   },
   totalTrips:{

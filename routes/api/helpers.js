@@ -8,7 +8,6 @@ const bcrypt = require('bcryptjs');
 const Helper = require('../../models/Helper');
 const config = require('config');
 const fn = require('../../libs/functions');
-const auth=require('../../middleware/auth');
 
 // @route GET api/helpers
 // @desc Test router
@@ -51,7 +50,7 @@ router.post(
         }
 
         //if this is the new helper then create new helper
-        helper=new Helper({name,email,password,rate,location});
+        helper=new Helper({name,email,password,rate,location,rating:0});
 
         //generate salt and hash the password of the drvier for protection
         const hashSalt = await bcrypt.genSalt(10);
@@ -147,7 +146,6 @@ router.post(
 //     res.json(helper);
 //   }
 //   catch(err){
-//     console.error(err.message);
 //     if(err.kind=='ObjectId'){
 //       return res.status(400).json({msg:'Helper data not found'});
 //     }
@@ -158,37 +156,50 @@ router.post(
 // @route POST api/helpers/update
 // @desc View helper profile functionality by using jwt login token
 // @access public
-router.post('/update', auth, async(req,res) =>{
-  try{
-   //get the user containing the id from the request which we got after routeAuth was run
-   let helper = req.user;
-    //read the updates from request body
-    const updates=req.body;
-    helper = await Helper.findById(helper.id);
-    //in mongoose, the updated values won't appear immediately current post request
-    //to get new updated values to post request we need to set options to true
-    const options= {new:true};
-    update = await Helper.findByIdAndUpdate(helper.id,updates,options);
-    if(!update){
-      //If there is no helper data
-      return res.status(400).json({msg:'Update failed'});
+router.post('/update', routeAuth,[
+  //validate the request parameters sent by the client
+  check('email', 'Enter a valid email').isEmail(), //use validator to validate an email
+  ], async(req,res) =>{
+    //when request is received, validate the user data before proceeding further
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      //if there were some errors in the data received send the 400 response with the error message
+      return res.status(400).json({ errors: errors.array() });
     }
-    //send driver data as response
-    res.json(update);
-  }
-  catch(err){
-    console.error(err.message);
-    if(err.kind=='ObjectId'){
-      return res.status(400).json({msg:'Update failed'});
+    try{
+    //get the user containing the id from the request which we got after routeAuth was run
+    let helper = req.user;
+      //read the updates from request body
+      const updates=req.body;
+      //if the helper already exists in the system then return from here
+      let existing = await Helper.find({ email:updates.email });
+      if (existing.length > 0 && existing[0]._id != helper.id) {
+        return res
+          .status(400)
+          .json({ errors: [{ msg: 'Another account already exists with this email!' }] });
+      }
+      //in mongoose, the updated values won't appear immediately current post request
+      //to get new updated values to post request we need to set options to true
+      const options= {new:true};
+      update = await Helper.findByIdAndUpdate(helper.id,updates,options);
+      if(!update){
+        //If there is no helper data
+        return res.status(400).json({msg:'Update failed'});
+      }
+      update =  ({...update}._doc);
+      delete update.password;
+      //send driver data as response
+      res.status(200).json(update);
     }
-    res.status(500).send('Server Error');
-  }
+    catch(err){
+      res.status(500).send('Server Error');
+    }
 });
 
 // @route POST api/helpers/updatePassword
 // @desc View helper profile functionality by using jwt login token
 // @access public
-router.post('/updatePassword', auth, [
+router.post('/updatePassword', routeAuth, [
   //validate the request parameters sent by the client
   check('oldPassword','Current password required!').not().isEmpty(),
   check('newPassword', 'Password should have at least 8 chars!').custom((value)=>{
@@ -221,7 +232,9 @@ router.post('/updatePassword', auth, [
           const password = await bcrypt.hash(newPassword, hashSalt);
           //update the password and save it to database
           helper.password=password;
-          helper.save();
+          await helper.save();
+          helper = ({...helper}._doc);
+          delete helper.password;
           //return the updated user for demonstrating purposes
           return res.status(200).json(helper);
         }
@@ -232,10 +245,6 @@ router.post('/updatePassword', auth, [
     
     }
     catch(err){
-      console.error(err.message);
-      if(err.kind=='ObjectId'){
-        return res.status(400).json({msg:'Update failed'});
-      }
       res.status(500).send('Server Error');
     }
   }
@@ -269,17 +278,17 @@ router.delete('/', routeAuth, async(req, res) =>{
       const valid = await bcrypt.compare(password, helper.password);
       if(valid){
         helper = await Helper.findByIdAndDelete(helper.id);
+        helper = ({...helper}._doc);
+        delete helper.password;
         //return the deleted user for demonstrating purposes
         return res.status(200).json(helper);
       }
       //when user enters wrong password while deleting the account
-      return res.status(400).json({errors:[{msg:"Incorrect Password!"}]})
       return res.status(401).json({errors:[{msg:"Incorrect Password!"}]})
     }
     return res.status(400).json({errors:[{msg:"Cannot find the helper!"}]})
   } catch (err) {
     //prints the error message if it fails to delete the helper profile.
-    console.error(err.message);
     res.status(500).json({errors: [{msg: err.message}] });
   }
 });

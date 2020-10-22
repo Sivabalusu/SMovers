@@ -31,6 +31,12 @@ const BookingSchema = new mongoose.Schema( {
     helperEmail:{
         type:String
     },
+    driverName:{
+        type:String
+    },
+    helperName:{
+        type:String
+    },
     date:{
         type:Date,
         default:Date.now
