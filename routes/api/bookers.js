@@ -553,5 +553,22 @@ router.get('/changePassword/:id',
         }
     }
 );
+// @route GET api/bookers/profile
+// @desc gets the booker profile
+// @access Public
+router.get('/profile',routeAuth,async (req,res)=>{
+        try{
+          //find the user with the email entered
+          let booker = await Booker.findById({_id:req.user.id }).select('-password');
+          if(!booker){
+            return res.status(404).json("Unable to find user!");
+          }
+          res.status(200).json(booker);
+        } catch (err) {
+          //prints the error message if it fails to delete the helper profile.
+          res.status(500).json({errors: [{msg: err.message}] });
+        }
+    }
+);
 
 module.exports = router;
