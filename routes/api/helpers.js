@@ -142,7 +142,7 @@ router.post(
 //       //If there is no helper data
 //       return res.status(400).json({msg:'helper data not found'});
 //     }
-//     //send driver data as response
+//     //send helper data as response
 //     res.json(helper);
 //   }
 //   catch(err){
@@ -188,7 +188,7 @@ router.post('/update', routeAuth,[
       }
       update =  ({...update}._doc);
       delete update.password;
-      //send driver data as response
+      //send helper data as response
       res.status(200).json(update);
     }
     catch(err){
@@ -292,5 +292,35 @@ router.delete('/', routeAuth, async(req, res) =>{
     res.status(500).json({errors: [{msg: err.message}] });
   }
 });
+// @route PUT api/helpers/
+// @desc Provide availability for next 7 days;
+// @access Public
+router.put('/', routeAuth, async(req, res) =>{
+  try{
+    //check if it is Sunday so that user cannot update on any other day
+    //===>>>   0 = Sunday
+    
+    if(new Date().getDay() !== 0){
+      return res.status(400).json({errors: [{msg: "Cannot update on any other day but Sunday"}] });
+    }
+    availability = req.body.availability
+    if(availability.length != 7){
+      return res.status(400).json({errors:[{msg:"Week's availability is required!"}]});
+    }
+    //get the user containing the id from the request which we got after routeAuth was run
+    let helper = req.user;
+    //get the user data from the database so that we can check whether the password user entered is right or not
+    helper = await Helper.findById(helper.id);
+    if(helper){
+        currentAvailability = await fn.updateOrCreateAvailability(availability,helper,res);
+        return res.json(currentAvailability);
+      }
+     res.status(400).json({errors:[{msg:"Cannot find the helper!"}]})
+  } catch (err) {
+    //prints the error message if it fails to delete the helper profile.
+    res.status(500).json({errors: [{msg: err.message}] });
+  }
+});
+
 
 module.exports = router;

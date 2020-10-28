@@ -22,7 +22,7 @@ describe('Booker Post endpoints', () => {
     //delete the driver created
     afterAll(async(done)=>{
         await request(app).delete('/api/bookers/').set('x-auth-token',token).set('x-auth-token',token).send({
-            password
+            password : 'tarun8586'
         });
         done();
     });
@@ -30,7 +30,7 @@ describe('Booker Post endpoints', () => {
     Description  : Check that new  password does not matches new password
     Expected output : JSON returned with 400 status 
   */
-  it('Check that new  password does not matches new password', async (done) => {
+  it('Check that new  password does not matche the new password', async (done) => {
     const response = await request(app).post('/api/bookers/updatePassword').set('x-auth-token',token).send({
       currentPassword:password,
       password,
