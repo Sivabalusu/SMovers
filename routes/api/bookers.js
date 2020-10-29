@@ -190,7 +190,7 @@ router.get('/driver/:driver_id', async(req,res) =>{
       return res.status(400).json({msg:'Driver data not found'});
     }
     //send driver data as response
-    res.json(driver);
+    res.status(200).json(driver);
   }
   catch(err){
     res.status(500).send('Server Error');
@@ -211,7 +211,7 @@ router.get('/helper/:helper_id', async(req,res) =>{
       return res.status(400).json({msg:'helper data not found'});
     }
     //send driver data as response
-    res.json(helper);
+    res.status(200).json(helper);
   }
   catch(err){
     res.status(500).send('Server Error');
@@ -413,15 +413,16 @@ router.get('/driver/:driver_id', async(req,res) =>{
     const id=req.params.driver_id;
     //pass the driver_id as parameter
     const driver = await Driver.findOne({_id:id}).select('-password');
+
     if(!driver){
       //if there is no driver data
       return res.status(400).json({msg:'Driver data not found'});
     }
     //send driver data as response
-    res.json(driver);
+    res.status(200).json(driver);
   }
   catch(err){
-    res.status(500).send('Server Error');
+    res.status(500).send(err.message);
   }
 });
 
@@ -439,7 +440,7 @@ router.get('/helper/:helper_id', async(req,res) =>{
       return res.status(400).json({msg:'helper data not found'});
     }
     //send driver data as response
-    res.json(helper);
+    res.status(200).json(helper);
   }
   catch(err){
     res.status(500).send('Server Error');

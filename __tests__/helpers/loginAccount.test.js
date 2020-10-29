@@ -13,8 +13,13 @@ describe('Helper Post endpoints', () => {
 
    it('Should login user to system and return a web token', async (done) => {
     const response = await request(app).post('/api/helpers/login').send({
+<<<<<<< HEAD
         Email:'test@email.com',
         Password: 'test',
+=======
+        email:'test@email.com',
+        password: 'testpassword',
+>>>>>>> 32993982a3ee65e2fd93941121b71e709a7ebe3c
     });
     expect(response.statusCode).toEqual(200);
     done();
@@ -28,7 +33,11 @@ describe('Helper Post endpoints', () => {
 
     it('Check it fails as user does not provide password', async (done) => {
     const response = await request(app).post('/api/helpers/login').send({
+<<<<<<< HEAD
         Email:'test@email.com',
+=======
+        email:'test@email.com',
+>>>>>>> 32993982a3ee65e2fd93941121b71e709a7ebe3c
     });
     expect(response.statusCode).toEqual(400);
     done();
@@ -42,7 +51,11 @@ describe('Helper Post endpoints', () => {
     
     it('Check it fails as user does not provide email', async (done) => {
     const response = await request(app).post('/api/helpers/login').send({
+<<<<<<< HEAD
         Password: 'test',
+=======
+        password: 'testpassword',
+>>>>>>> 32993982a3ee65e2fd93941121b71e709a7ebe3c
     });
     expect(response.statusCode).toEqual(400);
     done();
@@ -69,8 +82,13 @@ describe('Helper Post endpoints', () => {
     
     it('Check it fails if user provides incorrect email and password', async (done) => {
     const response = await request(app).post('/api/helpers/login').send({
+<<<<<<< HEAD
         Email:'test123@gmail.com',
         Password: 'test123',
+=======
+        email:'test123@gmail.com',
+        password: 'test123',
+>>>>>>> 32993982a3ee65e2fd93941121b71e709a7ebe3c
     });
     expect(response.statusCode).toEqual(400);
     done();
@@ -83,10 +101,17 @@ describe('Helper Post endpoints', () => {
      Expected output : JSON returned with 400 status 
     */
     
+<<<<<<< HEAD
     it('Check it fails if user providesincorrect email format', async (done) => {
     const response = await request(app).post('/api/helpers/login').send({
         Email:'test',
         Password: 'test',
+=======
+    it('Check it fails if user provides incorrect email format', async (done) => {
+    const response = await request(app).post('/api/helpers/login').send({
+        email:'test',
+        password: 'testpassword',
+>>>>>>> 32993982a3ee65e2fd93941121b71e709a7ebe3c
     });
     expect(response.statusCode).toEqual(400);
     done();

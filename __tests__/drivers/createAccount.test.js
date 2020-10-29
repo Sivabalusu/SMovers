@@ -8,18 +8,23 @@ describe('Driver Post endpoints', () => {
     Description  : Check the actual functionality by providing name, email, password (twice),rate, 
                     licenscIssuedDate, carType, drivingExperience,location
     Input : Name: Test Driver,
-            Email:test@email.com,
-            Password: test,
-            ConfirmPassword:test,
-            Rate: cost per kms,
+            Email:test1@gmail.com,
+            Password: testpassword,
+            ConfirmPassword:testpassword,
+            Rate: rate,
             licenseIssuedDate: date,
             carType:car type,
+<<<<<<< HEAD
             drivingExperience:experience in years,
+=======
+            drivingExperience:experience years,
+>>>>>>> 32993982a3ee65e2fd93941121b71e709a7ebe3c
             location:City
     Expected output : JSON returned with 200 status
     */ 
   it('Should create a new user and return a web token', async (done) => {
     const response = await request(app).post('/api/drivers').send({
+<<<<<<< HEAD
         Name: 'Test Driver',
         Email:'test@email.com',
         Password: 'test',
@@ -29,8 +34,26 @@ describe('Driver Post endpoints', () => {
         carType:'car type',
         drivingExperience:'1',
         location:'City'
+=======
+        name: 'TestDriver1',
+        email:'testdriver@gmail.com',
+        password: 'testpassword',
+        confirmPassword:'testpassword',
+        rate:14,
+        licenseIssuedDate: '10-06-2018',
+        carType:'car type',
+        drivingExperience:1,
+        location:'City',
+>>>>>>> 32993982a3ee65e2fd93941121b71e709a7ebe3c
     });
-    expect(response.statusCode).toEqual(200);
+    if(response.statusCode == 200)
+    {
+      response = await request(app).get('/api/auth/2').set('x-auth-token',response.body.token);
+      expect(response.statusCode).toEqual(200);
+      done();
+      return;
+    }
+    expect(response.statusCode).toEqual(400);
     done();
   });
 
@@ -48,10 +71,10 @@ describe('Driver Post endpoints', () => {
 
   /*@test Test Case 3
   Description  : Check if it fails when name is not provided
-  Input: Email:test@email.com,
-         Password: test,
-         ConfirmPassword:test,
-         Rate: cost per kms,
+  Input: email:test@email.com,
+         password: test,
+         confirmPassword:test,
+         rate: cost per kms,
          licenseIssuedDate: date,
          carType:car type,
          drivingExperience:experience in years,
@@ -60,11 +83,19 @@ describe('Driver Post endpoints', () => {
 */
 it('Check if it returns status 400 because name is not provided', async (done) => {
   const response = await request(app).post('/api/drivers').send({
+<<<<<<< HEAD
         Email:'test@email.com',
         Password: 'test',
         ConfirmPassword:'test',
         Rate:14,
         licenseIssuedDate: 'date',
+=======
+        email:'test@email.com',
+        password: 'testpassword',
+        confirmPassword:'testpassword',
+        rate:14,
+        licenseIssuedDate: '2019-10-22',
+>>>>>>> 32993982a3ee65e2fd93941121b71e709a7ebe3c
         carType:'car type',
         drivingExperience:'1',
         location:'City'
@@ -87,6 +118,7 @@ Expected output : JSON returned with 400 status
 */
 it('Check if it returns status 400 because password is not provided', async (done) => {
 const response = await request(app).post('/api/drivers').send({
+<<<<<<< HEAD
       Name:'test driver',
       Email:'test@email.com',
       ConfirmPassword:'test',
@@ -95,6 +127,16 @@ const response = await request(app).post('/api/drivers').send({
       carType:'car type',
       drivingExperience:'1',
       location:'City'
+=======
+        name: 'TestDriver1',
+        email:'testdriver@gmail.com',
+        confirmPassword:'testpassword',
+        rate:14,
+        licenseIssuedDate: '10-06-2018',
+        carType:'car type',
+        drivingExperience:1,
+        location:'City',
+>>>>>>> 32993982a3ee65e2fd93941121b71e709a7ebe3c
 });
 expect(response.statusCode).toEqual(400);
 done();
@@ -104,7 +146,7 @@ done();
 Description  : Chect it fails if both passwords does not match
 Input : Name: Test Driver,
         Email:test@email.com,
-        Password: test,
+        Password: testpassword,
         ConfirmPassword:,
         Rate: cost per kms,
         licenseIssuedDate: date,
@@ -115,6 +157,7 @@ Expected output : JSON returned with 400 status
 */
 it('Check if it returns status 400 as both passwords does not match', async (done) => {
 const response = await request(app).post('/api/drivers').send({
+<<<<<<< HEAD
         Name: 'Test Driver',
         Email:'test@email.com',
         Password: 'test',
@@ -124,6 +167,17 @@ const response = await request(app).post('/api/drivers').send({
         carType:'car type',
         drivingExperience:'1',
         location:'City'
+=======
+        name: 'TestDriver1',
+        email:'testdriver@gmail.com',
+        password: 'testpassword',
+        confirmPassword:'',
+        rate:14,
+        licenseIssuedDate: '10-06-2018',
+        carType:'car type',
+        drivingExperience:1,
+        location:'City',
+>>>>>>> 32993982a3ee65e2fd93941121b71e709a7ebe3c
 });
 expect(response.statusCode).toEqual(400);
 done();
@@ -143,14 +197,19 @@ Expected output : JSON returned with 400 status
 */
 it('Check if it returns status 400 because rate is not provided', async (done) => {
 const response = await request(app).post('/api/drivers').send({
-        Name: 'Test Driver',
-        Email:'test@email.com',
-        Password: 'test',
-        ConfirmPassword:'test',
-        licenseIssuedDate: 'date',
+        name: 'TestDriver1',
+        email:'testdriver@gmail.com',
+        password: 'testpassword',
+        confirmPassword:'testpassword',
+        licenseIssuedDate: '10-06-2018',
         carType:'car type',
+<<<<<<< HEAD
         drivingExperience:'1',
         location:'City'
+=======
+        drivingExperience:1,
+        location:'City',
+>>>>>>> 32993982a3ee65e2fd93941121b71e709a7ebe3c
 });
 expect(response.statusCode).toEqual(400);
 done();
@@ -168,8 +227,9 @@ Input : Name: Test Driver,
         location:City
 Expected output : JSON returned with 400 status 
 */
-it('Check if it returns status 400 because licenseUssuedDate is not provided', async (done) => {
+it('Check if it returns status 400 because licenseIssuedDate is not provided', async (done) => {
 const response = await request(app).post('/api/drivers').send({
+<<<<<<< HEAD
         Name: 'Test Driver',
         Email:'test@email.com',
         Password: 'test',
@@ -178,6 +238,16 @@ const response = await request(app).post('/api/drivers').send({
         carType:'car type',
         drivingExperience:'1',
         location:'City'
+=======
+        name: 'TestDriver1',
+        email:'testdriver@gmail.com',
+        password: 'testpassword',
+        confirmPassword:'testpassword',
+        rate:14,
+        carType:'car type',
+        drivingExperience:1,
+        location:'City',
+>>>>>>> 32993982a3ee65e2fd93941121b71e709a7ebe3c
 });
 expect(response.statusCode).toEqual(400);
 done();
@@ -197,6 +267,7 @@ Expected output : JSON returned with 400 status
 */
 it('Check if it returns status 400 because carType is not provided', async (done) => {
 const response = await request(app).post('/api/drivers').send({
+<<<<<<< HEAD
         Name: 'Test Driver',
         Email:'test@email.com',
         Password: 'test',
@@ -205,6 +276,16 @@ const response = await request(app).post('/api/drivers').send({
         licenseIssuedDate: 'date',
         drivingExperience:'1',
         location:'City'
+=======
+        name: 'TestDriver1',
+        email:'testdriver@gmail.com',
+        password: 'testpassword',
+        confirmPassword:'testpassword',
+        rate:14,
+        licenseIssuedDate: '10-06-2018',
+        drivingExperience:1,
+        location:'City',
+>>>>>>> 32993982a3ee65e2fd93941121b71e709a7ebe3c
 });
 expect(response.statusCode).toEqual(400);
 done();
@@ -215,7 +296,7 @@ Description  : Chect it fails if drivingExperience not provided
 Input : Name: Test Driver,
         Email:test@email.com,
         Password: test,
-        ConfirmPassword:,
+        ConfirmPassword:test,
         Rate: cost per kms,
         licenseIssuedDate: date,
         carType:car type,
@@ -224,14 +305,23 @@ Expected output : JSON returned with 400 status
 */
 it('Check if it returns status 400 because drivingExperience is not provided', async (done) => {
 const response = await request(app).post('/api/drivers').send({
+<<<<<<< HEAD
         Name: 'Test Driver',
         Email:'test@email.com',
         Password: 'test',
         ConfirmPassword:'',
         Rate:14,
         licenseIssuedDate: 'date',
+=======
+        name: 'TestDriver1',
+        email:'testdriver@gmail.com',
+        password: 'testpassword',
+        confirmPassword:'testpassword',
+        rate:14,
+        licenseIssuedDate: '10-06-2018',
+>>>>>>> 32993982a3ee65e2fd93941121b71e709a7ebe3c
         carType:'car type',
-        location:'City'
+        location:'City',
 });
 expect(response.statusCode).toEqual(400);
 done();
@@ -242,7 +332,7 @@ Description  : Chect it fails if location not provided
 Input : Name: Test Driver,
         Email:test@email.com,
         Password: test,
-        ConfirmPassword:,
+        ConfirmPassword:test,
         Rate: cost per kms,
         licenseIssuedDate: date,
         carType:car type,
@@ -251,14 +341,23 @@ Expected output : JSON returned with 400 status
 */
 it('Check if it returns status 400 because location is not provided', async (done) => {
 const response = await request(app).post('/api/drivers').send({
+<<<<<<< HEAD
         Name: 'Test Driver',
         Email:'test@email.com',
         Password: 'test',
         ConfirmPassword:'',
         Rate:14,
         licenseIssuedDate: 'date',
+=======
+        name: 'TestDriver1',
+        email:'testdriver@gmail.com',
+        password: 'testpassword',
+        confirmPassword:'testpassword',
+        rate:14,
+        licenseIssuedDate: '10-06-2018',
+>>>>>>> 32993982a3ee65e2fd93941121b71e709a7ebe3c
         carType:'car type',
-        drivingExperience:experience in years,
+        drivingExperience:1,
 });
 expect(response.statusCode).toEqual(400);
 done();
