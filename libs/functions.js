@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const config = require('config');
 const BlackList = require('../models/BlackList');
 const Availability = require('../models/Availability');
+const sgMail = require('@sendgrid/mail');
 //@desc Add any functions separated from API routes
 
 module.exports = {
@@ -79,6 +80,51 @@ module.exports = {
         }
       })
     });
-  }
+  },
+  updateOrCreateAvailability : async (availability,user) => { 
+    const newAvailability = {
+      email:user.email,
+      dateUpdated : new Date().toLocaleDateString()
+    };
+    newAvailability.availability = availability.map((availability)=>availability);
+    //update the availability if exists or create new one
+    return await Availability.findOneAndUpdate({email:user.email},newAvailability,{upsert:true,new:true});
+  },
+  //method to create jwt for forgot password
+  createForgotToken:async (payload,res) => {
+    try{
+      const token = jwt.sign(
+        payload,
+        config.get('jwtForgotPassword'),
+        {
+          expiresIn: 900,
+        }
+      );
+      return token;
+    }
+    catch(err){
+      res.status(500).json({errors:[{msg : err.message}]});
+    }
+  },
+    
+    sendMail : (to,subject,html,res)=> {
+      sgMail.setApiKey(config.get('SENDGRID_API_KEY'));
+      const msg = {
+        to, // Change to your recipient
+        from:'tarunpreetsingh16@gmail.com', // Change to your verified sender
+        subject,
+        html,
+      }
+      sgMail
+        .send(msg)
+        .then(() => {
+          res.status(200).json({msg:'Email has been sent to change your password'});
+        })
+        .catch((error) => {
+          res.status(400).json({errors:[{msg:error.message}]});
+        })
+     }
 };
+
+
 
