@@ -8,10 +8,14 @@ const Driver = require('../../models/Driver');
 const Helper = require('../../models/Helper');
 const {Bookings} = require('../../models/Booking');
 const fn = require('../../libs/functions');
+const jwt = require('jsonwebtoken');
+const config = require('config');
+
 const router = express.Router();
 
 const { check, validationResult } = require('express-validator');
 const { on } = require('../../models/Booker');
+const { sendMail } = require('../../libs/functions');
 
 // @route Post api/bookers
 // @desc create/register booker
@@ -217,19 +221,6 @@ router.get('/helper/:helper_id', async(req,res) =>{
     res.status(500).send('Server Error');
   }
 });
-
-// @route GET api/bookers/drivers
-// @desc fetch the available drivers
-// @access Public
-// router.get('/drivers',async (req,res)=>{
-//   try{
-//     const drivers = await Driver.find().select('-password');
-//     res.status(200).json(drivers);
-//   }catch(err){
-//     //something happened at the server side
-//     res.status(500).json({ errors: [{ msg: err.message }] });
-//   }
-// });
 
 // @route GET api/bookers/searchDrivers
 // @desc fetch the available drivers based on the search criteria of the user
@@ -465,6 +456,119 @@ router.get("/bookings",routeAuth,async (req,res)=>{
       res.status(500).json({ errors: [{ msg: err.message }] });
     }
   }
+);
+// @route GET api/bookers/forgotPassword
+// @desc change password when user is unable to login because they forgot the password;
+// @access Public
+router.get('/forgotPassword',
+    [//validate the request parameters sent by the client
+      check('email', 'Enter a valid email').isEmail(), //use validator to validate an email
+    ],async (req,res)=>{
+        //when request is received, validate the user data before proceeding further
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          //if there were some errors in the data received send the 400 response with the error message
+          return res.status(400).json({ errors: errors.array() });
+        }
+        try{
+          const {email} = req.body;
+          //create a payload to be used by jwt to create hash
+          const payload = {
+            user: {
+              /*this id is not in the model, however MongoDB generates object id with every record
+              and mongoose provide an interface to use _id as id without using underscore*/
+              email,
+            },
+          };
+          //check if email address exists in the database
+          //find the user with the email entered
+          let booker = await Booker.findOne({ email});
+          //if the booker already exists in the system then return from here
+          if (booker) {            
+            //create secret UID using jwt to be sent to user 
+            const token = await fn.createForgotToken(payload,res);
+            //create mail structure and send it to the user
+            const link = `http://localhost:5000/api/bookers/changePassword/${token}`;
+            const message = `<h2>${booker.name},</h2><br>
+                             <h4>You requested to reset the password of S_Movers Account.</h4> <br>
+                             <a href="${link}">
+                              <button style="padding:1rem 1.5rem; background-color:orange;border-radius:10px;border:0;color:white">Change password</button>
+                             </a><br>
+                             <h5>Copyable Link : <a href="${link}">${link}</a></h5><br>
+                             <h4><em>This link is valid for next 15 minutes. </em></h4><br>
+                             <h4>Ignore if not requested by you or contact us regarding this.</h4>`;
+            const to = req.body.email;
+            const subject = "Update your password - S_MOVERS"; 
+            fn.sendMail(to,subject,message,res);
+          }
+          else{
+            res.status(404).json({errors: [{msg: 'User is not registered with us!'}] });
+          }
+        } catch (err) {
+          //prints the error message if it fails to delete the helper profile.
+          res.status(500).json({errors: [{msg: err.message}] });
+        }
+    }
+);
+// @route GET api/bookers/forgotPassword/id
+// @desc create new password from the link sent to the mail
+// @access Public
+router.get('/changePassword/:id',
+    [
+      check('password', 'Password should have at least 8 chars!').custom((value)=>{
+      return !(typeof value == typeof undefined || value == null || value.length < 8);
+      }),
+      check('confirmPassword','Passwords do not match!').custom((value,{req})=>{
+        return value == req.body.password;
+      }),
+    ],async (req,res)=>{
+        //when request is received, validate the user data before proceeding further
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          //if there were some errors in the data received send the 400 response with the error message
+          return res.status(400).json({ errors: errors.array() });
+        }
+        try{
+          let {password} = req.body;
+
+          const jwtToken = req.params.id;
+          //verify the token fetched using secret Key
+          const jwtObject = jwt.verify(jwtToken, config.get('jwtForgotPassword'));
+          //set the user in request to be used for updating the password for correct user
+          const user = jwtObject.user;
+          
+          //generate salt and hash the password of the user for protection
+          //do not change the value from 10 as it will take more computation power and time
+          const hashSalt = await bcrypt.genSalt(10);
+          password = await bcrypt.hash(password, hashSalt);
+
+          //update the booker's password 
+          booker = await Booker.findOneAndUpdate({email:user.email},{$set:{password}});
+          booker = ({...booker}._doc);
+          delete booker.password;
+          return res.status(200).json(booker);
+        } catch (err) {
+          //prints the error message if it fails to delete the helper profile.
+          res.status(500).json({errors: [{msg: err.message}] });
+        }
+    }
+);
+// @route GET api/bookers/profile
+// @desc gets the booker profile
+// @access Public
+router.get('/profile',routeAuth,async (req,res)=>{
+        try{
+          //find the user with the email entered
+          let booker = await Booker.findById({_id:req.user.id }).select('-password');
+          if(!booker){
+            return res.status(404).json("Unable to find user!");
+          }
+          res.status(200).json(booker);
+        } catch (err) {
+          //prints the error message if it fails to delete the helper profile.
+          res.status(500).json({errors: [{msg: err.message}] });
+        }
+    }
 );
 
 module.exports = router;

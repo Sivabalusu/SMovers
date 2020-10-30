@@ -20,8 +20,9 @@ describe('Booker - View Helper endpoint', () => {
         if(response.statusCode == 200){
             token = response.body.token;
             response = await request(app).get('/api/auth/3').set('x-auth-token',token);
-            if(response.statusCode == 200)
+            if(response.statusCode == 200){
                 id = response.body._id;
+            }
         }
         done();
     });
@@ -67,7 +68,7 @@ describe('Booker - View Helper endpoint', () => {
     Expected output : JSON returned with 200 status 
     */
     it('Helper\'s data is returned as json when correct id is provided ', async (done) => {
-    console.log(id);
+    console.log(3,id);
     const response = await request(app).get(`/api/bookers/helper/${id}`);
     expect(response.statusCode).toEqual(200);
     done();

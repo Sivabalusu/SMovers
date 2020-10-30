@@ -5,6 +5,7 @@ const routeAuth = require('../../middleware/auth');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
 const Driver= require('../../models/Driver');
+const Availability = require('../../models/Availability');
 const bcrypt = require('bcryptjs');
 const config = require('config');
 const fn = require('../../libs/functions');
@@ -254,7 +255,7 @@ router.post('/updatePassword', routeAuth,[
   }  
 });
 
-// @route GET api/driver/logout
+// @route GET api/drivers/logout
 // @desc logout functionality by checking the blacklist jwt
 // @access Public
 router.get('/logout', async (req, res) => {
@@ -267,7 +268,7 @@ router.get('/logout', async (req, res) => {
   }
 });
 
-// @route Delete api/driver
+// @route Delete api/drivers
 // @desc delete functionality to delete the driver profile.
 // @access Public
 router.delete('/', routeAuth, async(req, res) =>{
@@ -291,6 +292,36 @@ router.delete('/', routeAuth, async(req, res) =>{
       return res.status(401).json({errors:[{msg:"Incorrect Password!"}]})
     }
     return res.status(400).json({errors:[{msg:"Cannot find the driver!"}]})
+  } catch (err) {
+    //prints the error message if it fails to delete the driver profile.
+    res.status(500).json({errors: [{msg: err.message}] });
+  }
+});
+
+// @route PUT api/drivers/
+// @desc Provide availability for next 7 days;
+// @access Public
+router.put('/', routeAuth, async(req, res) =>{
+  try{
+    //check if it is Sunday so that user cannot update on any other day
+    //===>>>   0 = Sunday
+    
+    if(new Date().getDay() !== 0){
+      return res.status(400).json({errors: [{msg: "Cannot update on any other day but Sunday"}] });
+    }
+    availability = req.body.availability
+    if(availability.length != 7){
+      return res.status(400).json({errors:[{msg:"Week's availability is required!"}]});
+    }
+    //get the user containing the id from the request which we got after routeAuth was run
+    let driver = req.user;
+    //get the user data from the database so that we can check whether the password user entered is right or not
+    driver = await Driver.findById(driver.id);
+    if(driver){
+        currentAvailability = await fn.updateOrCreateAvailability(availability,driver,res);
+        return res.json(currentAvailability);
+      }
+     res.status(400).json({errors:[{msg:"Cannot find the driver!"}]})
   } catch (err) {
     //prints the error message if it fails to delete the driver profile.
     res.status(500).json({errors: [{msg: err.message}] });
