@@ -316,7 +316,7 @@ router.put('/', routeAuth, async(req, res) =>{
         currentAvailability = await fn.updateOrCreateAvailability(availability,driver,res);
         return res.json(currentAvailability);
       }
-     res.status(400).json({errors:[{msg:"Cannot find the driver!"}]})
+     res.status(400).json({errors:[{msg:"Cannot find the driver!"}]});
   } catch (err) {
     //prints the error message if it fails to delete the driver profile.
     res.status(500).json({errors: [{msg: err.message}] });
@@ -421,5 +421,25 @@ router.get('/changePassword/:id',
     }
 );
 
+// @route GET api/drivers/availability
+// @desc Get Driver Availability for that week
+//@access Public
+router.get('/availability',routeAuth, async(req,res) =>{
+  try{
+      //get the user containing the id from the request which we got after routeAuth was run
+      let driver = req.user;
+      //get the user data from the database so that we can check whether the password user entered is right or not
+      driver = await Driver.findById(driver.id);
+      if(driver){
+        availability = await Availability.findOne({email:driver.email});
+        return res.json(availability);
+      }
+     res.status(400).json({errors:[{msg:"Cannot find the driver!"}]});
 
+  }
+  catch(err){
+    res.status(500).json({errors:[{msg:err.message}]});
+  }
+}
+);
 module.exports = router;
