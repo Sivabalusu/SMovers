@@ -606,7 +606,7 @@ router.post('/bookDriver',routeAuth,
         const {driverEmail,pickUp,drop,date,startTime,motive} = req.body;
         //find the booker to get the email address to send an email
         booker = await Booker.findById(req.user.id).select('-password');
-        driver =  await Driver.findOne({email:driverEmail});
+        driver =  await Driver.findOne({email:driverEmail}).select('-password');
         if(!booker || !driver){
           return res.status(400).json({errors: [{msg: "Something happened!"}] });
         }
@@ -759,6 +759,34 @@ router.post('/bookHelper',routeAuth,
           //send mail back to user the booking was not accepted by the driver
           fn.sendAutomaticMail(token,helperEmail,booker,pickUp,drop,date,motive,startTime,"Helper",res);
         }
+      } catch (err) {
+        //prints the error message if it fails to delete the helper profile.
+        res.status(500).json({errors: [{msg: err.message}] });
+      }
+  }
+);
+// @route POST api/bookers/bookHelper
+// @desc try to book a service -> Driver (Service cycle starts from here)
+// @access Public
+router.get('/futureBooking',routeAuth,async (req,res)=>{
+     try{
+       //try getting the booker email for future purposes
+        booker = await Booker.findById(req.user.id).select('-password');
+        if(!booker){
+          res.status(500).json({errors: [{msg: 'Unable to find the booker!'}] });
+        }
+        //get the bookings of a booker
+        bookings = await Bookings.findOne({bookerEmail:booker.email});
+        let futureBookings = [];
+        //check if bookings exist for the user
+        if(bookings){
+          today = new Date();
+          //filter bookings which are ahead of today's date and are not in pending state
+          futureBookings = bookings.bookings.filter((value)=>{
+            return value.date.getTime() > today.getTime() && value.status != 0
+          })
+        }
+        res.status(200).json(futureBookings);
       } catch (err) {
         //prints the error message if it fails to delete the helper profile.
         res.status(500).json({errors: [{msg: err.message}] });
