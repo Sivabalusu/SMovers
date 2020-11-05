@@ -765,10 +765,10 @@ router.post('/bookHelper',routeAuth,
       }
   }
 );
-// @route POST api/bookers/bookHelper
-// @desc try to book a service -> Driver (Service cycle starts from here)
+// @route GET api/bookers/futureBookings
+// @desc get future bookings for the booker
 // @access Public
-router.get('/futureBooking',routeAuth,async (req,res)=>{
+router.get('/futureBookings',routeAuth,async (req,res)=>{
      try{
        //try getting the booker email for future purposes
         booker = await Booker.findById(req.user.id).select('-password');
@@ -791,6 +791,49 @@ router.get('/futureBooking',routeAuth,async (req,res)=>{
         //prints the error message if it fails to delete the helper profile.
         res.status(500).json({errors: [{msg: err.message}] });
       }
+  }
+);
+// @route POST api/bookers/cancelBooking
+// @desc Cancela booking accepted by the secondary users -> Driver / Helper
+// @access Public
+router.get('/cancelBooking/:id',routeAuth,async (req,res)=>{
+    try{
+      const bookingId = req.params.id;
+      //try getting the booker email for future purposes
+      booker = await Booker.findById(req.user.id).select('-password');
+      if(!booker){
+        res.status(500).json({errors: [{msg: 'Unable to find the booker!'}] });
+      }
+      //get the bookings of a booker
+      bookings = await Bookings.findOne({bookerEmail:booker.email});
+      let specificBooking;
+      //check if bookings exist for the user
+      if(bookings){
+        //get the specific booking which needs to be cancelled
+        //and also remove that from the bookings document
+        bookings.bookings = bookings.bookings.filter((value)=>{
+          if(value._id == bookingId && value.status != 0)
+            specificBooking = value;
+          return value._id != bookingId;
+        });
+      }
+      if(!specificBooking){
+        return res.status(400).json({errors:[{msg:'No such booking exists!'}]})
+      }
+      //save the document with updated bookings
+      await bookings.save();
+      //send mail to the appropriate user that booking has been cancelled
+      if(specificBooking.driverEmail != null)
+        result = await fn.sendCancellationMail(booker.name,specificBooking.driverEmail,specificBooking.pickUp,specificBooking.drop,specificBooking.date,specificBooking.motive,specificBooking.startTime,"Booker",res);
+      else
+        result = await fn.sendCancellationMail(booker.name,specificBooking.helperEmail,specificBooking.pickUp,specificBooking.drop,specificBooking.date,specificBooking.motive,specificBooking.startTime,"Booker",res);
+      if(result >= 200 && result <= 300)
+        msg = 'Email sent!';
+      res.status(200).json({cancellation:true,msg});
+    } catch (err) {
+        //prints the error message if it fails to delete the helper profile.
+        res.status(500).json({errors: [{msg: err.message}] });
+    }
   }
 );
 module.exports = router;

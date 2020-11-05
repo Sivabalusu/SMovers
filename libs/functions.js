@@ -258,4 +258,26 @@ module.exports = {
     const subject = "Booking rejection - S_MOVERS"; 
     // return await module.exports.sendMail(to,subject,message,res);
   },
+  //send automatic cancellation of the service mail to the user
+  sendCancellationMail: async function(fromName,toEmail,pickUp,drop,date,motive,startTime,typeOfUser,res){
+      const message = `
+      <div style="font-family: sans-serif">
+      <h2 style="font-size: 1rem;">Hi ${booker.name},</h2>
+      <h2 style="font-size: 1rem;">The booking with the following details has been <strong><em>cancelled</em></strong> by the ${typeOfUser} -   </h2>
+      <pre style="font-size: 1rem">
+      ${typeOfUser} Name - ${fromName}
+      Pick Up Address - ${pickUp.number} ${pickUp.street}, ${pickUp.city}, ${pickUp.province}, ${pickUp.zipCode}, ${pickUp.country}
+      Drop Address - ${drop.number} ${drop.street}, ${drop.city}, ${drop.province}, ${drop.zipCode}, ${drop.country}
+      Date - ${date}
+      Start Time - ${startTime}
+      Motive - ${motive}
+      </pre>
+      <h2 style="font-size: 1rem;">We apologize for the incovenience please adjust accordingly.</h2>
+    </div>
+    `;
+      const to = toEmail;
+      const subject = "Booking cancellation - S_MOVERS"; 
+      result =  await module.exports.sendMail(to,subject,message,res);
+      return result;
+  },
 };
