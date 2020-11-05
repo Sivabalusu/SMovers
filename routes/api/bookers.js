@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const Booker = require('../../models/Booker');
 const Driver = require('../../models/Driver');
 const Helper = require('../../models/Helper');
-const {Bookings} = require('../../models/Booking');
+const {Bookings,Booking} = require('../../models/Booking');
 const fn = require('../../libs/functions');
 const jwt = require('jsonwebtoken');
 const config = require('config');
@@ -571,4 +571,198 @@ router.get('/profile',routeAuth,async (req,res)=>{
     }
 );
 
+
+// @route POST api/bookers/bookDriver
+// @desc try to book a service -> Driver (Service cycle starts from here)
+// @access Public
+router.post('/bookDriver',routeAuth,
+  [
+    check('driverEmail', 'Invalid driver email!').isEmail(),
+    check('pickUp.street','Pick up Street is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.number','Pick up Apartment Number is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.city','Pick up City is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.province','Pick up Province is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.zipCode','Pick up ZipCode is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.country','Pick up Country is needed!').custom((value)=>  value.trim().length>0),
+    check('drop.street','Pick up Street is needed!').custom((value)=>value.trim().length>0),
+    check('drop.number','Pick up Apartment Number is needed!').custom((value)=>value.trim().length>0),
+    check('drop.city','Pick up City is needed!').custom((value)=>value.trim().length>0),
+    check('drop.province','Pick up Province is needed!').custom((value)=>value.trim().length>0),
+    check('drop.zipCode','Pick up ZipCode is needed!').custom((value)=>value.trim().length>0),
+    check('drop.country','Pick up Country is needed!').custom((value)=>value.trim().length>0),
+    check('date','Date is required to schedule a job!').custom((value)=>value.trim().length>0),
+    check('startTime','Start time is required').custom((value)=>value.trim().length>0),
+    check('motive','Description of the service is required').custom((value)=>value.trim().length>0),
+   ],async (req,res)=>{
+   
+      //when request is received, validate the user data before proceeding further
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        //if there were some errors in the data received send the 400 response with the error message
+        return res.status(400).json({ errors: errors.array() });
+      } try{
+        const expiryTime = 2100000;
+        //destructure the data posted by the client
+        const {driverEmail,pickUp,drop,date,startTime,motive} = req.body;
+        //find the booker to get the email address to send an email
+        booker = await Booker.findById(req.user.id).select('-password');
+        driver =  await Driver.findOne({email:driverEmail});
+        if(!booker || !driver){
+          return res.status(400).json({errors: [{msg: "Something happened!"}] });
+        }
+        //create new booking
+        newBooking =  new Booking({driverEmail,
+                                  driverName:driver.name,
+                                  date,
+                                  pickUp,
+                                  drop,
+                                  startTime,
+                                  motive,
+                                  carType:driver.carType,
+                                  status:0});
+        //check if bookings already exists for this user                                  
+        var bookings = await Bookings.findOne({bookerEmail:booker.email});
+        if(!bookings){
+          //if this is the first time user is booking a service create new bookings document for this user
+          bookings = new Bookings({
+            bookerEmail:booker.email,
+          })
+        } 
+        bookings.bookings.push(newBooking);
+        await bookings.save();
+        //create a payload to be used by jwt to create hash
+        
+        //store the last booking id for further use
+        lastBookingId = bookings.bookings[bookings.bookings.length-1]._id ;
+        const payload = {
+          booking: {
+            /*this id is not in the model, however MongoDB generates object id with every record
+            and mongoose provide an interface to use _id as id without using underscore*/
+            bookerEmail:booker.email,
+            id:lastBookingId
+          },
+        };
+        //create secret UID using jwt to be sent to user 
+        const token = await fn.createBookingToken(payload,res);
+        console.log(token);
+        //create mail structure and send it to the user
+        fn.sendRequestMail(token,driverEmail,booker,pickUp,drop,date,motive,startTime,res);
+        //wait for expiration time of the request and get the status of the booking
+        getStatus = async function(){
+          await fn.customSetTimeout(expiryTime);
+          return await fn.checkStatus(booker.email,lastBookingId);
+        }
+        value = await getStatus();
+        //if 0 is returned that means booking has not been accepted by the driver and we need to cancel it
+        if(!value){
+          //remove the booking as it is not accepted within the defined period
+          bookings.bookings = bookings.bookings.filter((value)=>{
+            return String(value._id) != String(lastBookingId);
+          })
+          await bookings.save();
+          //send mail back to user the booking was not accepted by the driver
+          fn.sendAutomaticMail(token,driverEmail,booker,pickUp,drop,date,motive,startTime,"Driver",res);
+        }
+      } catch (err) {
+        //prints the error message if it fails to delete the helper profile.
+        res.status(500).json({errors: [{msg: err.message}] });
+      }
+  }
+);
+// @route POST api/bookers/bookHelper
+// @desc try to book a service -> Driver (Service cycle starts from here)
+// @access Public
+router.post('/bookHelper',routeAuth,
+  [
+    check('helperEmail', 'Invalid helper email!').isEmail(),
+    check('pickUp.street','Pick up Street is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.number','Pick up Apartment Number is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.city','Pick up City is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.province','Pick up Province is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.zipCode','Pick up ZipCode is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.country','Pick up Country is needed!').custom((value)=>  value.trim().length>0),
+    check('drop.street','Pick up Street is needed!').custom((value)=>value.trim().length>0),
+    check('drop.number','Pick up Apartment Number is needed!').custom((value)=>value.trim().length>0),
+    check('drop.city','Pick up City is needed!').custom((value)=>value.trim().length>0),
+    check('drop.province','Pick up Province is needed!').custom((value)=>value.trim().length>0),
+    check('drop.zipCode','Pick up ZipCode is needed!').custom((value)=>value.trim().length>0),
+    check('drop.country','Pick up Country is needed!').custom((value)=>value.trim().length>0),
+    check('date','Date is required to schedule a job!').custom((value)=>value.trim().length>0),
+    check('startTime','Start time is required').custom((value)=>value.trim().length>0),
+    check('motive','Description of the service is required').custom((value)=>value.trim().length>0),
+   ],async (req,res)=>{
+   
+      //when request is received, validate the user data before proceeding further
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        //if there were some errors in the data received send the 400 response with the error message
+        return res.status(400).json({ errors: errors.array() });
+      } try{
+        const expiryTime = 2100000;
+        //destructure the data posted by the client
+        const {helperEmail,pickUp,drop,date,startTime,motive} = req.body;
+        //find the booker to get the email address to send an email
+        booker = await Booker.findById(req.user.id).select('-password');
+        helper = await Helper.findOne({email:helperEmail}).select('-password');
+        if(!booker || !helper){
+          return res.status(400).json({errors: [{msg: "Something happened!"}] });
+        }
+        //create new booking
+        newBooking =  new Booking({helperEmail,
+                                  helperName:helper.name,
+                                  date,
+                                  pickUp,
+                                  drop,
+                                  startTime,
+                                  motive,
+                                  status:0});
+        //check if bookings already exists for this user                                  
+        var bookings = await Bookings.findOne({bookerEmail:booker.email});
+        if(!bookings){
+          //if this is the first time user is booking a service create new bookings document for this user
+          bookings = new Bookings({
+            bookerEmail:booker.email,
+          })
+        } 
+        bookings.bookings.push(newBooking);
+        await bookings.save();
+        //create a payload to be used by jwt to create hash
+        
+        //store the last booking id for further use
+        lastBookingId = bookings.bookings[bookings.bookings.length-1]._id ;
+        const payload = {
+          booking: {
+            /*this id is not in the model, however MongoDB generates object id with every record
+            and mongoose provide an interface to use _id as id without using underscore*/
+            bookerEmail:booker.email,
+            id:lastBookingId
+          },
+        };
+        //create secret UID using jwt to be sent to user 
+        const token = await fn.createBookingToken(payload,res);
+        console.log(token);
+        //create mail structure and send it to the user
+        fn.sendRequestMail(token,helperEmail,booker,pickUp,drop,date,motive,startTime,res);
+        //wait for expiration time of the request and get the status of the booking
+        getStatus = async function(){
+          await fn.customSetTimeout(expiryTime);
+          return await fn.checkStatus(booker.email,lastBookingId);
+        }
+        value = await getStatus();
+        //if 0 is returned that means booking has not been accepted by the driver and we need to cancel it
+        if(!value){
+          //remove the booking as it is not accepted within the defined period
+          bookings.bookings = bookings.bookings.filter((value)=>{
+            return String(value._id) != String(lastBookingId);
+          })
+          await bookings.save();
+          //send mail back to user the booking was not accepted by the driver
+          fn.sendAutomaticMail(token,helperEmail,booker,pickUp,drop,date,motive,startTime,"Helper",res);
+        }
+      } catch (err) {
+        //prints the error message if it fails to delete the helper profile.
+        res.status(500).json({errors: [{msg: err.message}] });
+      }
+  }
+);
 module.exports = router;

@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node server",
     "server": "nodemon server",
-    "test": "jest --detectOpenHandles"
+    "test": "jest --detectOpenHandles",
+    "client":"npm start --prefix ../client",
+    "dev": "concurrently \"npm run server\" \"npm run client\""
   },
   "author": "Tarunpreet Singh",
   "license": "MIT",

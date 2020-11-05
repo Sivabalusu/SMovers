@@ -47,8 +47,17 @@ const BookingSchema = new mongoose.Schema( {
     drop:{
         type:AddressSchema
     },
-    carType:{
+    startTime:{
+        type: String
+    },
+    motive:{
         type:String
+    },
+    carType:{
+        type: String
+    },
+    status:{
+        type:Number // 0 - Not accepted ,1 - Rejected
     }
 });
 
