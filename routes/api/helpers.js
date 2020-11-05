@@ -6,6 +6,7 @@ const router = express.Router();
 const { check, validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const Helper = require('../../models/Helper');
+const {Bookings,Booking} = require('../../models/Booking');
 const config = require('config');
 const fn = require('../../libs/functions');
 
@@ -52,7 +53,7 @@ router.post(
         //if this is the new helper then create new helper
         helper=new Helper({name,email,password,rate,location,rating:0});
 
-        //generate salt and hash the password of the drvier for protection
+        //generate salt and hash the password of the helper for protection
         const hashSalt = await bcrypt.genSalt(10);
         helper.password = await bcrypt.hash(password, hashSalt);
 
@@ -130,28 +131,24 @@ router.post(
     }
 );
 
-// @route GET api/helpers/view/:helper_id
+// @route GET api/helpers/profile
 // @desc View helper profile functionality by using jwt login token
 // @access private
-// router.get('/view/:helper_id', auth, async(req,res) =>{
-//   try{
-//     //pass the helper_id as parameter
-//     const id=req.params.helper_id;
-//     const helper = await Helper.findOne({_id:id}).select('-password');
-//     if(!helper){
-//       //If there is no helper data
-//       return res.status(400).json({msg:'helper data not found'});
-//     }
-//     //send helper data as response
-//     res.json(helper);
-//   }
-//   catch(err){
-//     if(err.kind=='ObjectId'){
-//       return res.status(400).json({msg:'Helper data not found'});
-//     }
-//     res.status(500).send('Server Error');
-//   }
-// });
+router.get('/profile', routeAuth, async(req,res) =>{
+  try{
+    let helper = await Helper.findById({_id:req.user.id}).select('-password');
+    if(!helper){
+      //If there is no helper data
+      return res.status(400).json({msg:'Unable to find the helper'});
+    }
+    //send helper data as response
+    res.status(200).send(helper);
+  }
+  catch(err){
+    //prints the error message if it fails to load helper's profile
+    res.status(500).json({errors:[{msg:err.message}]});
+  }
+});
 
 // @route POST api/helpers/update
 // @desc View helper profile functionality by using jwt login token
@@ -292,6 +289,103 @@ router.delete('/', routeAuth, async(req, res) =>{
     res.status(500).json({errors: [{msg: err.message}] });
   }
 });
+
+// @route GET api/helpers/forgotPassword
+// @desc change password when user is unable to login because they forgot the password;
+// @access Public
+router.get('/forgotPassword',
+    [//validate the request parameters sent by the client
+      check('email', 'Enter a valid email').isEmail(), //use validator to validate an email
+    ],async (req,res)=>{
+        //when request is received, validate the user data before proceeding further
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          //if there were some errors in the data received send the 400 response with the error message
+          return res.status(400).json({ errors: errors.array() });
+        }
+        try{
+          const {email} = req.body;
+          //create a payload to be used by jwt to create hash
+          const payload = {
+            user: {
+              /*this id is not in the model, however MongoDB generates object id with every record
+              and mongoose provide an interface to use _id as id without using underscore*/
+              email,
+            },
+          };
+          //check if email address exists in the database
+          //find the user with the email entered
+          let helper = await Helper.findOne({ email});
+          //if the helper already exists in the system then return from here
+          if (helper) {            
+            //create secret UID using jwt to be sent to user 
+            const token = await fn.createForgotToken(payload,res);
+            //create mail structure and send it to the user
+            const link = `http://localhost:5000/api/helpers/changePassword/${token}`;
+            const message = `<h2>${helper.name},</h2><br>
+                             <h4>You requested to reset the password of S_Movers Account.</h4> <br>
+                             <a href="${link}">
+                              <button style="padding:1rem 1.5rem; background-color:orange;border-radius:10px;border:0;color:white">Change password</button>
+                             </a><br>
+                             <h5>Copyable Link : <a href="${link}">${link}</a></h5><br>
+                             <h4><em>This link is valid for next 15 minutes. </em></h4><br>
+                             <h4>Ignore if not requested by you or contact us regarding this.</h4>`;
+            const to = req.body.email;
+            const subject = "Update your password - S_MOVERS"; 
+            fn.sendMail(to,subject,message,res);
+          }
+          else{
+            res.status(404).json({errors: [{msg: 'User is not registered with us!'}] });
+          }
+        } catch (err) {
+          //prints the error message if it fails to delete the helper profile.
+          res.status(500).json({errors: [{msg: err.message}] });
+        }
+    }
+);
+
+// @route GET api/helpers/forgotPassword/id
+// @desc create new password from the link sent to the mail
+// @access Public
+router.get('/changePassword/:id',
+    [
+      check('password', 'Password should have at least 8 chars!').custom((value)=>{
+      return !(typeof value == typeof undefined || value == null || value.length < 8);
+      }),
+      check('confirmPassword','Passwords do not match!').custom((value,{req})=>{
+        return value == req.body.password;
+      }),
+    ],async (req,res)=>{
+        //when request is received, validate the user data before proceeding further
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          //if there were some errors in the data received send the 400 response with the error message
+          return res.status(400).json({ errors: errors.array() });
+        }
+        try{
+          let {password} = req.body;
+          const jwtToken = req.params.id;
+          //verify the token fetched using secret Key
+          const jwtObject = jwt.verify(jwtToken, config.get('jwtForgotPassword'));
+          //set the user in request to be used for updating the password for correct user
+          const user = jwtObject.user;
+          
+          //generate salt and hash the password of the user for protection
+          //do not change the value from 10 as it will take more computation power and time
+          const hashSalt = await bcrypt.genSalt(10);
+          password = await bcrypt.hash(password, hashSalt);
+          //update the helper's password 
+          helper = await Helper.findOneAndUpdate({email:user.email},{$set:{password}});
+          helper = ({...helper}._doc);
+          delete helper.password;
+          return res.status(200).json(helper);
+        } catch (err) {
+          //prints the error message if it fails to delete the helper profile.
+          res.status(500).json({errors: [{msg: err.message}] });
+        }
+    }
+);
+
 // @route PUT api/helpers/
 // @desc Provide availability for next 7 days;
 // @access Public
@@ -315,12 +409,105 @@ router.put('/', routeAuth, async(req, res) =>{
         currentAvailability = await fn.updateOrCreateAvailability(availability,helper,res);
         return res.json(currentAvailability);
       }
-     res.status(400).json({errors:[{msg:"Cannot find the helper!"}]})
+     res.status(400).json({errors:[{msg:"Cannot find the helper!"}]});
   } catch (err) {
     //prints the error message if it fails to delete the helper profile.
     res.status(500).json({errors: [{msg: err.message}] });
   }
 });
 
+// @route GET api/helpers/availability
+// @desc Get Helper Availability for that week
+// @access Public
+router.get('/availability',routeAuth, async(req,res) =>{
+  try{
+      //get the user containing the id from the request which we got after routeAuth was run
+      let helper = req.user;
+      //get the user data from the database so that we can check whether the password user entered is right or not
+      helper = await Helper.findById(helper.id);
+      if(helper){
+        availability = await Availability.findOne({email:helper.email});
+        return res.json(availability);
+      }
+     res.status(400).json({errors:[{msg:"Cannot find the helper!"}]});
+
+  }
+  catch(err){
+    res.status(500).json({errors:[{msg:err.message}]});
+  }
+}
+);
+
+// @route GET api/helpers/futureBooking
+// @desc try to get upcoming bookings of helper
+// @access Public
+router.get('/futureBookings',routeAuth,async (req,res)=>{
+  try{
+    //try getting the helper email for future purposes
+     helper = await Helper.findById(req.user.id).select('-password');
+     if(!helper){
+       res.status(500).json({errors: [{msg: 'Unable to find the helper!'}] });
+     }
+     //get the bookings of a helper
+     bookings = await Bookings.findOne({helperEmail:helper.email});
+     let futureBookings = [];
+     //check if bookings exist for the user
+     if(bookings){
+       today = new Date();
+       //filter bookings which are ahead of today's date and are not in pending state
+       futureBookings = bookings.bookings.filter((value)=>{
+         return value.date.getTime() > today.getTime() && value.status != 0
+       })
+     }
+     res.status(200).json(futureBookings);
+   } catch (err) {
+     //prints the error message if it fails to delete the helper profile.
+     res.status(500).json({errors: [{msg: err.message}] });
+   }
+}
+);
+
+// @route POST api/helpers/cancelBooking
+// @desc Cancel booking accepted by the himself
+// @access Public
+router.get('/cancelBooking/:id',routeAuth,async (req,res)=>{
+  try{
+    const bookingId = req.params.id;
+    //try getting the helper email for future purposes
+    helper = await Helper.findById(req.user.id).select('-password');
+    if(!helper){
+      res.status(500).json({errors: [{msg: 'Unable to find the helper!'}] });
+    }
+    //get the bookings of a helper
+    bookings = await Bookings.findOne({helperEmail:helper.email});
+    let specificBooking;
+    //check if bookings exist for the user
+    if(bookings){
+      //get the specific booking which needs to be cancelled
+      //and also remove that from the bookings document
+      bookings.bookings = bookings.bookings.filter((value)=>{
+        if(value._id == bookingId && value.status != 0)
+          specificBooking = value;
+        return value._id != bookingId;
+      });
+    }
+    if(!specificBooking){
+      return res.status(400).json({errors:[{msg:'No such booking exists!'}]})
+    }
+    //save the document with updated bookings
+    await bookings.save();
+    //send mail to the appropriate user that booking has been cancelled
+    if(specificBooking.bookerEmail != null)
+      result = await fn.sendCancellationMail(booker.name,specificBooking.bookerEmail,specificBooking.pickUp,specificBooking.drop,specificBooking.date,specificBooking.motive,specificBooking.startTime,"Booker",res);
+    
+    if(result >= 200 && result <= 300)
+      msg = 'Email sent!';
+    res.status(200).json({cancellation:true,msg});
+  } catch (err) {
+      //prints the error message if it fails to delete the helper profile.
+      res.status(500).json({errors: [{msg: err.message}] });
+  }
+}
+);
 
 module.exports = router;

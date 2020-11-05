@@ -553,6 +553,7 @@ router.get('/changePassword/:id',
         }
     }
 );
+
 // @route GET api/bookers/profile
 // @desc gets the booker profile
 // @access Public
