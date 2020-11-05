@@ -10,6 +10,7 @@ const bcrypt = require('bcryptjs');
 const config = require('config');
 const fn = require('../../libs/functions');
 const jwt = require('jsonwebtoken');
+const {Bookings, Booking} = require('../../models/Booking');
 
 // @route  POST api/drivers
 // @desc   Register router
@@ -439,6 +440,93 @@ router.get('/availability',routeAuth, async(req,res) =>{
   }
   catch(err){
     res.status(500).json({errors:[{msg:err.message}]});
+  }
+}
+);
+
+// @route GET api/drivers/upcoming-bookings
+// @desc view upcoming bookings
+// @access Public
+router.get("/upcoming-bookings",routeAuth,async (req,res)=>{
+  try{
+    // get booker email from the id 
+    const driver = await Driver.findById({_id:req.user.id});
+    //get today's date
+    const today=Date.now();
+    //find upcoming bookings of the user logged in 
+    const bookings = await Booking.find({driverEmail:driver.email});
+    console.log(bookings);
+    if(bookings.length > 0)
+      res.status(200).json(bookings[0].bookings);
+    else
+    res.status(400).json({errors:[{msg:"No bookings found!"}]});
+  }catch(err){
+    //something happened at the server side
+    res.status(500).json({ errors: [{ msg: err.message }] });
+  }
+}
+);
+
+// @route GET api/drivers/rating
+// @desc provide rating to the bookers for services they booked
+// @access Public
+router.get("/rating",routeAuth,async (req,res)=>{
+  try{
+    // get booker email from the id 
+    const driver = await Driver.findById({_id:req.user.id});
+    //find bookings of the user logged in
+    const bookings = await Bookings.find({driverEmail:driver.email});
+    if(bookings.length > 0)
+      res.status(200).json(bookings[0].bookings);
+    else
+    res.status(400).json({errors:[{msg:"No bookings found!"}]});
+  }catch(err){
+    //something happened at the server side
+    res.status(500).json({ errors: [{ msg: err.message }] });
+  }
+}
+);
+
+	// @route POST api/drivers/cancelBooking
+// @desc Driver cancels accepted booking
+// @access Public
+router.get('/cancelBooking/:id',routeAuth,async (req,res)=>{
+  try{
+    const bookingId = req.params.id;
+    //try getting the driver email for future purposes
+    driver = await Driver.findById(req.user.id).select('-password');
+    if(!driver){
+      res.status(500).json({errors: [{msg: 'Unable to find the Driver!'}] });
+    }
+    //get the bookings of a driver
+    bookings = await Bookings.findOne({driverEmail:driver.email});
+    let specificBooking;
+    //check if bookings exist for the user
+    if(bookings){
+      //get the specific booking which needs to be cancelled
+      //and also remove that from the bookings document
+      bookings.bookings = bookings.bookings.filter((value)=>{
+        if(value._id == bookingId && value.status != 0)
+          specificBooking = value;
+        return value._id != bookingId;
+      });
+    }
+    if(!specificBooking){
+      return res.status(400).json({errors:[{msg:'No such booking exists!'}]})
+    }
+    //save the document with updated bookings
+    await bookings.save();
+    //send mail to the appropriate user that booking has been cancelled
+    if(specificBooking.bookerEmail != null)
+      result = await fn.sendCancellationMail(driver.name,specificBooking.driverEmail,specificBooking.pickUp,specificBooking.drop,specificBooking.date,specificBooking.motive,specificBooking.startTime,"Booker",res);
+    else
+      result = await fn.sendCancellationMail(booker.name,specificBooking.helperEmail,specificBooking.pickUp,specificBooking.drop,specificBooking.date,specificBooking.motive,specificBooking.startTime,"Booker",res);
+    if(result >= 200 && result <= 300)
+      msg = 'Email sent!';
+    res.status(200).json({cancellation:true,msg});
+  } catch (err) {
+      //prints the error message if it fails to delete the helper profile.
+      res.status(500).json({errors: [{msg: err.message}] });
   }
 }
 );
