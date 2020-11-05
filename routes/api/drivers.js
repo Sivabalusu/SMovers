@@ -11,8 +11,8 @@ const bcrypt = require('bcryptjs');
 const config = require('config');
 const jwt = require('jsonwebtoken');
 const fn = require('../../libs/functions');
-const { Bookings } = require('../../models/Booking');
-const BlackList = require('../../models/BlackList');
+const jwt = require('jsonwebtoken');
+const {Bookings, Booking} = require('../../models/Booking');
 
 // @route  POST api/drivers
 // @desc   Register router
@@ -136,28 +136,22 @@ router.post(
     }
 );
 
-// @route GET api/driver/view/:driver_id
+// @route GET api/drivers/profile
 // @desc View Driver Profile functionality by using jwt login token
-// @access private
-// router.get('/view/:driver_id', auth, async(req,res) =>{
-//   try{
-//     const id=req.params.driver_id;
-//     //pass the driver_id as parameter
-//     const driver = await Driver.findOne({_id:id}).select('-password');
-//     if(!driver){
-//       //if there is no driver data
-//       return res.status(400).json({msg:'Driver data not found'});
-//     }
-//     //send driver data as response
-//     res.json(driver);
-//   }
-//   catch(err){
-//     if(err.kind=='ObjectId'){
-//       return res.status(400).json({msg:'Driver data not found'});
-//     }
-//     res.status(500).send('Server Error');
-//   }
-// });
+//@access Public
+router.get('/profile', routeAuth, async(req,res) =>{
+  try{
+    let driver=await Driver.findById({_id:req.user.id}).select('-password');
+    if(!driver){
+      res.status(404).json("Unable to find the Driver");
+    }
+    res.status(200).send(driver);
+  }
+  catch(err){
+    //prints the error message if it fails to load driver's profile
+    res.status(500).json({errors:[{msg:err.message}]});
+  }
+});
 
 // @route POST api/drivers/update
 // @desc Update driver profile functionality
@@ -325,13 +319,218 @@ router.put('/', routeAuth, async(req, res) =>{
         currentAvailability = await fn.updateOrCreateAvailability(availability,driver,res);
         return res.json(currentAvailability);
       }
-     res.status(400).json({errors:[{msg:"Cannot find the driver!"}]})
+     res.status(400).json({errors:[{msg:"Cannot find the driver!"}]});
   } catch (err) {
     //prints the error message if it fails to delete the driver profile.
     res.status(500).json({errors: [{msg: err.message}] });
   }
 });
+// @route GET api/drivers/forgotPassword
+// @desc change password when user is unable to login because they forgot the password;
+// @access Public
+router.get('/forgotPassword',
+    [//validate the request parameters sent by the client
+      check('email', 'Enter a valid email').isEmail(), //use validator to validate an email
+    ],async (req,res)=>{
+        //when request is received, validate the user data before proceeding further
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          //if there were some errors in the data received send the 400 response with the error message
+          return res.status(400).json({ errors: errors.array() });
+        }
+        try{
+          const {email} = req.body;
+          //create a payload to be used by jwt to create hash
+          const payload = {
+            user: {
+              /*this id is not in the model, however MongoDB generates object id with every record
+              and mongoose provide an interface to use _id as id without using underscore*/
+              email,
+            },
+          };
+          //check if email address exists in the database
+          //find the user with the email entered
+          let driver = await Driver.findOne({ email});
+          //if the driver already exists in the system then return from here
+          if (driver) {            
+            //create secret UID using jwt to be sent to user 
+            const token = await fn.createForgotToken(payload,res);
+            //create mail structure and send it to the user
+            const link = `http://localhost:5000/api/drivers/changePassword/${token}`;
+            const message = `<h2>${driver.name},</h2><br>
+                             <h4>You requested to reset the password of S_Movers Account.</h4> <br>
+                             <a href="${link}">
+                              <button style="padding:1rem 1.5rem; background-color:orange;border-radius:10px;border:0;color:white">Change password</button>
+                             </a><br>
+                             <h5>Copyable Link : <a href="${link}">${link}</a></h5><br>
+                             <h4><em>This link is valid for next 15 minutes. </em></h4><br>
+                             <h4>Ignore if not requested by you or contact us regarding this.</h4>`;
+            const to = req.body.email;
+            const subject = "Update your password - S_MOVERS"; 
+            fn.sendMail(to,subject,message,res);
+          }
+          else{
+            res.status(404).json({errors: [{msg: 'User is not registered with us!'}] });
+          }
+        } catch (err) {
+          //prints the error message if it fails to delete the helper profile.
+          res.status(500).json({errors: [{msg: err.message}] });
+        }
+    }
+);
 
+// @route GET api/drivers/changePassword/id
+// @desc create new password from the link sent to the mail
+// @access Public
+router.get('/changePassword/:id',
+    [
+      check('password', 'Password should have at least 8 chars!').custom((value)=>{
+      return !(typeof value == typeof undefined || value == null || value.length < 8);
+      }),
+      check('confirmPassword','Passwords do not match!').custom((value,{req})=>{
+        return value == req.body.password;
+      }),
+    ],async (req,res)=>{
+        //when request is received, validate the user data before proceeding further
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          //if there were some errors in the data received send the 400 response with the error message
+          return res.status(400).json({ errors: errors.array() });
+        }
+        try{
+          let {password} = req.body;
+
+          const jwtToken = req.params.id;
+          //verify the token fetched using secret Key
+          const jwtObject = jwt.verify(jwtToken, config.get('jwtForgotPassword'));
+          //set the user in request to be used for updating the password for correct user
+          const user = jwtObject.user;
+          
+          //generate salt and hash the password of the user for protection
+          //do not change the value from 10 as it will take more computation power and time
+          const hashSalt = await bcrypt.genSalt(10);
+          password = await bcrypt.hash(password, hashSalt);
+
+          //update the driver's password 
+          driver = await Driver.findOneAndUpdate({email:user.email},{$set:{password}});
+          driver = ({...driver}._doc);
+          delete driver.password;
+          return res.status(200).json(driver);
+        } catch (err) {
+          //prints the error message if it fails to delete the helper profile.
+          res.status(500).json({errors: [{msg: err.message}] });
+        }
+    }
+);
+
+// @route GET api/drivers/availability
+// @desc Get Driver Availability for that week
+//@access Public
+router.get('/availability',routeAuth, async(req,res) =>{
+  try{
+      //get the user containing the id from the request which we got after routeAuth was run
+      let driver = req.user;
+      //get the user data from the database so that we can check whether the password user entered is right or not
+      driver = await Driver.findById(driver.id);
+      if(driver){
+        availability = await Availability.findOne({email:driver.email});
+        return res.json(availability);
+      }
+     res.status(400).json({errors:[{msg:"Cannot find the driver!"}]});
+
+  }
+  catch(err){
+    res.status(500).json({errors:[{msg:err.message}]});
+  }
+}
+);
+
+// @route GET api/drivers/upcoming-bookings
+// @desc view upcoming bookings
+// @access Public
+router.get("/upcoming-bookings",routeAuth,async (req,res)=>{
+  try{
+    // get booker email from the id 
+    const driver = await Driver.findById({_id:req.user.id});
+    //get today's date
+    const today=Date.now();
+    //find upcoming bookings of the user logged in 
+    const bookings = await Booking.find({driverEmail:driver.email});
+    console.log(bookings);
+    if(bookings.length > 0)
+      res.status(200).json(bookings[0].bookings);
+    else
+    res.status(400).json({errors:[{msg:"No bookings found!"}]});
+  }catch(err){
+    //something happened at the server side
+    res.status(500).json({ errors: [{ msg: err.message }] });
+  }
+}
+);
+
+// @route GET api/drivers/rating
+// @desc provide rating to the bookers for services they booked
+// @access Public
+router.get("/rating",routeAuth,async (req,res)=>{
+  try{
+    // get booker email from the id 
+    const driver = await Driver.findById({_id:req.user.id});
+    //find bookings of the user logged in
+    const bookings = await Bookings.find({driverEmail:driver.email});
+    if(bookings.length > 0)
+      res.status(200).json(bookings[0].bookings);
+    else
+    res.status(400).json({errors:[{msg:"No bookings found!"}]});
+  }catch(err){
+    //something happened at the server side
+    res.status(500).json({ errors: [{ msg: err.message }] });
+  }
+}
+);
+
+	// @route POST api/drivers/cancelBooking
+// @desc Driver cancels accepted booking
+// @access Public
+router.get('/cancelBooking/:id',routeAuth,async (req,res)=>{
+  try{
+    const bookingId = req.params.id;
+    //try getting the driver email for future purposes
+    driver = await Driver.findById(req.user.id).select('-password');
+    if(!driver){
+      res.status(500).json({errors: [{msg: 'Unable to find the Driver!'}] });
+    }
+    //get the bookings of a driver
+    bookings = await Bookings.findOne({driverEmail:driver.email});
+    let specificBooking;
+    //check if bookings exist for the user
+    if(bookings){
+      //get the specific booking which needs to be cancelled
+      //and also remove that from the bookings document
+      bookings.bookings = bookings.bookings.filter((value)=>{
+        if(value._id == bookingId && value.status != 0)
+          specificBooking = value;
+        return value._id != bookingId;
+      });
+    }
+    if(!specificBooking){
+      return res.status(400).json({errors:[{msg:'No such booking exists!'}]})
+    }
+    //save the document with updated bookings
+    await bookings.save();
+    //send mail to the appropriate user that booking has been cancelled
+    if(specificBooking.bookerEmail != null)
+      result = await fn.sendCancellationMail(driver.name,specificBooking.driverEmail,specificBooking.pickUp,specificBooking.drop,specificBooking.date,specificBooking.motive,specificBooking.startTime,"Booker",res);
+    else
+      result = await fn.sendCancellationMail(booker.name,specificBooking.helperEmail,specificBooking.pickUp,specificBooking.drop,specificBooking.date,specificBooking.motive,specificBooking.startTime,"Booker",res);
+    if(result >= 200 && result <= 300)
+      msg = 'Email sent!';
+    res.status(200).json({cancellation:true,msg});
+  } catch (err) {
+      //prints the error message if it fails to delete the helper profile.
+      res.status(500).json({errors: [{msg: err.message}] });
+  }
+}
+);
 // @route PUT api/drivers/bookingProposal
 // @desc Respond to the request made by the user for a service;
 // @access Public
