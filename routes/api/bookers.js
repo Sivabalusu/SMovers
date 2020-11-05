@@ -500,6 +500,8 @@ router.get('/forgotPassword',
             const to = req.body.email;
             const subject = "Update your password - S_MOVERS"; 
             fn.sendMail(to,subject,message,res);
+            if(result >= 200 && result <=300)
+              res.status(200).json({msg:'Email sent to change the password'})
           }
           else{
             res.status(404).json({errors: [{msg: 'User is not registered with us!'}] });
@@ -510,10 +512,10 @@ router.get('/forgotPassword',
         }
     }
 );
-// @route GET api/bookers/forgotPassword/id
+// @route post api/bookers/changePassword/id
 // @desc create new password from the link sent to the mail
 // @access Public
-router.get('/changePassword/:id',
+router.post('/changePassword/:id',
     [
       check('password', 'Password should have at least 8 chars!').custom((value)=>{
       return !(typeof value == typeof undefined || value == null || value.length < 8);
@@ -591,7 +593,9 @@ router.post('/bookDriver',routeAuth,
     check('drop.province','Pick up Province is needed!').custom((value)=>value.trim().length>0),
     check('drop.zipCode','Pick up ZipCode is needed!').custom((value)=>value.trim().length>0),
     check('drop.country','Pick up Country is needed!').custom((value)=>value.trim().length>0),
-    check('date','Date is required to schedule a job!').custom((value)=>value.trim().length>0),
+    check('date','Valid date is required!').custom((value)=>{
+      return value.trim().length>0 && new Date(new Date().toLocaleDateString()).getTime() <= new Date(value).getTime();
+    }), 
     check('startTime','Start time is required').custom((value)=>value.trim().length>0),
     check('motive','Description of the service is required').custom((value)=>value.trim().length>0),
    ],async (req,res)=>{
@@ -647,7 +651,7 @@ router.post('/bookDriver',routeAuth,
         const token = await fn.createBookingToken(payload,res);
         console.log(token);
         //create mail structure and send it to the user
-        fn.sendRequestMail(token,driverEmail,booker,pickUp,drop,date,motive,startTime,res);
+        fn.sendRequestMail(token,driverEmail,booker,pickUp,drop,date,motive,startTime,"drivers",res);
         //wait for expiration time of the request and get the status of the booking
         getStatus = async function(){
           await fn.customSetTimeout(expiryTime);
@@ -688,7 +692,9 @@ router.post('/bookHelper',routeAuth,
     check('drop.province','Pick up Province is needed!').custom((value)=>value.trim().length>0),
     check('drop.zipCode','Pick up ZipCode is needed!').custom((value)=>value.trim().length>0),
     check('drop.country','Pick up Country is needed!').custom((value)=>value.trim().length>0),
-    check('date','Date is required to schedule a job!').custom((value)=>value.trim().length>0),
+    check('date','Valid date is required!').custom((value)=>{
+      return value.trim().length>0 && new Date(new Date().toLocaleDateString()).getTime() <= new Date(value).getTime();
+    }),
     check('startTime','Start time is required').custom((value)=>value.trim().length>0),
     check('motive','Description of the service is required').custom((value)=>value.trim().length>0),
    ],async (req,res)=>{
@@ -743,7 +749,7 @@ router.post('/bookHelper',routeAuth,
         const token = await fn.createBookingToken(payload,res);
         console.log(token);
         //create mail structure and send it to the user
-        fn.sendRequestMail(token,helperEmail,booker,pickUp,drop,date,motive,startTime,res);
+        fn.sendRequestMail(token,helperEmail,booker,pickUp,drop,date,motive,startTime,"helpers",res);
         //wait for expiration time of the request and get the status of the booking
         getStatus = async function(){
           await fn.customSetTimeout(expiryTime);
@@ -803,7 +809,7 @@ router.get('/cancelBooking/:id',routeAuth,async (req,res)=>{
       //try getting the booker email for future purposes
       booker = await Booker.findById(req.user.id).select('-password');
       if(!booker){
-        res.status(500).json({errors: [{msg: 'Unable to find the booker!'}] });
+        return res.status(500).json({errors: [{msg: 'Unable to find the booker!'}] });
       }
       //get the bookings of a booker
       bookings = await Bookings.findOne({bookerEmail:booker.email});
@@ -813,7 +819,7 @@ router.get('/cancelBooking/:id',routeAuth,async (req,res)=>{
         //get the specific booking which needs to be cancelled
         //and also remove that from the bookings document
         bookings.bookings = bookings.bookings.filter((value)=>{
-          if(value._id == bookingId && value.status != 0)
+          if(value._id == bookingId && value.status != 0 && new Date((new Date().setDate((new Date(value.date.toLocaleDateString()).getDate() - 2)))).getTime() >= new Date().getTime())
             specificBooking = value;
           return value._id != bookingId;
         });
@@ -866,8 +872,9 @@ router.post('/rate/:id/:rating',routeAuth,async (req,res)=>{
         }
         return value;
       });
+      
+      await bookings.save();
     }
-    await bookings.save();
     if(rated){
       //update the rating in the user profile or document
       if(specificBooking.driverEmail != null ){
@@ -875,7 +882,7 @@ router.post('/rate/:id/:rating',routeAuth,async (req,res)=>{
         if(driver){
           //updat the totaltrips by one and calculate the updated rating (average)
           driver.totalTrips = driver.totalTrips + 1;
-          driver.rating = Math.floor((driver.rating+rating)/driver.totalTrips);
+          driver.rating = Math.floor(((driver.rating*(driver.totalTrips-1)))/driver.totalTrips);
           await driver.save();
         }
       }
@@ -884,7 +891,7 @@ router.post('/rate/:id/:rating',routeAuth,async (req,res)=>{
         helper = await Helper.findOne({email:specificBooking.helperEmail});
         if(helper){
           helper.totalTrips = helper.totalTrips + 1;
-          helper.rating = Math.floor((helper.rating+rating)/helper.totalTrips);
+          helper.rating = Math.floor(((helper.rating*(helper.totalTrips-1))+rating)/helper.totalTrips);
           await helper.save();
         }
       }

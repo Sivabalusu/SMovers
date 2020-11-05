@@ -165,9 +165,9 @@ module.exports = {
     })
     return promise;
   },
-  sendRequestMail: async function(token,email,booker,pickUp,drop,date,motive,startTime,res){
-      const acceptanceLink = `http://localhost:5000/api/drivers/bookingProposal/${token}/true`;
-      const rejectionLink = `http://localhost:5000/api/drivers/bookingProposal/${token}/false`;
+  sendRequestMail: async function(token,email,booker,pickUp,drop,date,motive,startTime,typeOfUser,res){
+      const acceptanceLink = `http://localhost:5000/api/${typeOfUser}/bookingProposal/${token}/true`;
+      const rejectionLink = `http://localhost:5000/api/${typeOfUser}/bookingProposal/${token}/false`;
       const message = `
       <div style="font-family: sans-serif">
       <h2 style="font-size: 1rem;">Hi,</h2>
@@ -193,9 +193,9 @@ module.exports = {
     `;
       const to = email;
       const subject = "Booking request - S_MOVERS"; 
-      // result = await module.exports.sendMail(to,subject,message,res);
-      // if(result >= 200 && result <=300 )
-      //   res.status(200).json({msg:"Email has been sent!"});
+      result = await module.exports.sendMail(to,subject,message,res);
+      if(result >= 200 && result <=300 )
+        res.status(200).json({msg:"Email has been sent!"});
   },
   //send automatic cancellation of the service mail to the user
   sendAutomaticMail: async function(token,fromEmail,booker,pickUp,drop,date,motive,startTime,typeOfUser,res){
@@ -216,7 +216,7 @@ module.exports = {
     `;
       const to = booker.email;
       const subject = "Booking cancellation - S_MOVERS"; 
-      // result = await module.exports.sendMail(to,subject,message,res);
+      result = await module.exports.sendMail(to,subject,message,res);
   },
   sendAcceptanceMail: async function(fromEmail,bookerEmail,pickUp,drop,date,motive,startTime,typeOfUser,res){
     const message = `
@@ -236,7 +236,7 @@ module.exports = {
   `;
     const to = bookerEmail;
     const subject = "Booking acceptance - S_MOVERS"; 
-    // return await module.exports.sendMail(to,subject,message,res);
+    return await module.exports.sendMail(to,subject,message,res);
   },
   sendRejectionMail: async function(fromEmail,bookerEmail,pickUp,drop,date,motive,startTime,typeOfUser,res){
     const message = `
@@ -256,13 +256,13 @@ module.exports = {
   `;
     const to = bookerEmail;
     const subject = "Booking rejection - S_MOVERS"; 
-    // return await module.exports.sendMail(to,subject,message,res);
+    return await module.exports.sendMail(to,subject,message,res);
   },
   //send automatic cancellation of the service mail to the user
   sendCancellationMail: async function(fromName,toEmail,pickUp,drop,date,motive,startTime,typeOfUser,res){
       const message = `
       <div style="font-family: sans-serif">
-      <h2 style="font-size: 1rem;">Hi ${booker.name},</h2>
+      <h2 style="font-size: 1rem;">Hi,</h2>
       <h2 style="font-size: 1rem;">The booking with the following details has been <strong><em>cancelled</em></strong> by the ${typeOfUser} -   </h2>
       <pre style="font-size: 1rem">
       ${typeOfUser} Name - ${fromName}

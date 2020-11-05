@@ -67,6 +67,10 @@ const BookingSchema = new mongoose.Schema( {
         type:Number,
         max:5,
         min:1
+    },
+    bookerRated:{
+        type:Boolean,
+        default:false
     }
 });
 

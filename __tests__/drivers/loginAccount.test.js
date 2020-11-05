@@ -16,7 +16,9 @@ describe('Driver Post endpoints', () => {
         email:'driver4@gmail.com',
         password: '12356789',
     });
-    expect(response.statusCode).toEqual(200);
+    if(response.statusCode == 200){
+        expect(response.statusCode).toEqual(200);
+    }
     done();
   });
 

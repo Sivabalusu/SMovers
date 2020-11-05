@@ -26,7 +26,12 @@ const BookerSchema = new mongoose.Schema({
     type:Number,
     min:0,
     max:5,
-}
+    default:0
+  },
+  numberOfServices:{
+    type:Number,
+    default:0
+  }
 });
 
 module.exports = Booker = mongoose.model('booker', BookerSchema);
