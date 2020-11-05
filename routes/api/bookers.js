@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const Booker = require('../../models/Booker');
 const Driver = require('../../models/Driver');
 const Helper = require('../../models/Helper');
-const {Bookings} = require('../../models/Booking');
+const {Bookings,Booking} = require('../../models/Booking');
 const fn = require('../../libs/functions');
 const jwt = require('jsonwebtoken');
 const config = require('config');
@@ -572,4 +572,331 @@ router.get('/profile',routeAuth,async (req,res)=>{
     }
 );
 
+
+// @route POST api/bookers/bookDriver
+// @desc try to book a service -> Driver (Service cycle starts from here)
+// @access Public
+router.post('/bookDriver',routeAuth,
+  [
+    check('driverEmail', 'Invalid driver email!').isEmail(),
+    check('pickUp.street','Pick up Street is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.number','Pick up Apartment Number is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.city','Pick up City is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.province','Pick up Province is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.zipCode','Pick up ZipCode is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.country','Pick up Country is needed!').custom((value)=>  value.trim().length>0),
+    check('drop.street','Pick up Street is needed!').custom((value)=>value.trim().length>0),
+    check('drop.number','Pick up Apartment Number is needed!').custom((value)=>value.trim().length>0),
+    check('drop.city','Pick up City is needed!').custom((value)=>value.trim().length>0),
+    check('drop.province','Pick up Province is needed!').custom((value)=>value.trim().length>0),
+    check('drop.zipCode','Pick up ZipCode is needed!').custom((value)=>value.trim().length>0),
+    check('drop.country','Pick up Country is needed!').custom((value)=>value.trim().length>0),
+    check('date','Date is required to schedule a job!').custom((value)=>value.trim().length>0),
+    check('startTime','Start time is required').custom((value)=>value.trim().length>0),
+    check('motive','Description of the service is required').custom((value)=>value.trim().length>0),
+   ],async (req,res)=>{
+   
+      //when request is received, validate the user data before proceeding further
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        //if there were some errors in the data received send the 400 response with the error message
+        return res.status(400).json({ errors: errors.array() });
+      } try{
+        const expiryTime = 2100000;
+        //destructure the data posted by the client
+        const {driverEmail,pickUp,drop,date,startTime,motive} = req.body;
+        //find the booker to get the email address to send an email
+        booker = await Booker.findById(req.user.id).select('-password');
+        driver =  await Driver.findOne({email:driverEmail}).select('-password');
+        if(!booker || !driver){
+          return res.status(400).json({errors: [{msg: "Something happened!"}] });
+        }
+        //create new booking
+        newBooking =  new Booking({driverEmail,
+                                  driverName:driver.name,
+                                  date,
+                                  pickUp,
+                                  drop,
+                                  startTime,
+                                  motive,
+                                  carType:driver.carType,
+                                  status:0});
+        //check if bookings already exists for this user                                  
+        var bookings = await Bookings.findOne({bookerEmail:booker.email});
+        if(!bookings){
+          //if this is the first time user is booking a service create new bookings document for this user
+          bookings = new Bookings({
+            bookerEmail:booker.email,
+          })
+        } 
+        bookings.bookings.push(newBooking);
+        await bookings.save();
+        //create a payload to be used by jwt to create hash
+        
+        //store the last booking id for further use
+        lastBookingId = bookings.bookings[bookings.bookings.length-1]._id ;
+        const payload = {
+          booking: {
+            /*this id is not in the model, however MongoDB generates object id with every record
+            and mongoose provide an interface to use _id as id without using underscore*/
+            bookerEmail:booker.email,
+            id:lastBookingId
+          },
+        };
+        //create secret UID using jwt to be sent to user 
+        const token = await fn.createBookingToken(payload,res);
+        console.log(token);
+        //create mail structure and send it to the user
+        fn.sendRequestMail(token,driverEmail,booker,pickUp,drop,date,motive,startTime,res);
+        //wait for expiration time of the request and get the status of the booking
+        getStatus = async function(){
+          await fn.customSetTimeout(expiryTime);
+          return await fn.checkStatus(booker.email,lastBookingId);
+        }
+        value = await getStatus();
+        //if 0 is returned that means booking has not been accepted by the driver and we need to cancel it
+        if(!value){
+          //remove the booking as it is not accepted within the defined period
+          bookings.bookings = bookings.bookings.filter((value)=>{
+            return String(value._id) != String(lastBookingId);
+          })
+          await bookings.save();
+          //send mail back to user the booking was not accepted by the driver
+          fn.sendAutomaticMail(token,driverEmail,booker,pickUp,drop,date,motive,startTime,"Driver",res);
+        }
+      } catch (err) {
+        //prints the error message if it fails to delete the helper profile.
+        res.status(500).json({errors: [{msg: err.message}] });
+      }
+  }
+);
+// @route POST api/bookers/bookHelper
+// @desc try to book a service -> Driver (Service cycle starts from here)
+// @access Public
+router.post('/bookHelper',routeAuth,
+  [
+    check('helperEmail', 'Invalid helper email!').isEmail(),
+    check('pickUp.street','Pick up Street is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.number','Pick up Apartment Number is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.city','Pick up City is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.province','Pick up Province is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.zipCode','Pick up ZipCode is needed!').custom((value)=>value.trim().length>0),
+    check('pickUp.country','Pick up Country is needed!').custom((value)=>  value.trim().length>0),
+    check('drop.street','Pick up Street is needed!').custom((value)=>value.trim().length>0),
+    check('drop.number','Pick up Apartment Number is needed!').custom((value)=>value.trim().length>0),
+    check('drop.city','Pick up City is needed!').custom((value)=>value.trim().length>0),
+    check('drop.province','Pick up Province is needed!').custom((value)=>value.trim().length>0),
+    check('drop.zipCode','Pick up ZipCode is needed!').custom((value)=>value.trim().length>0),
+    check('drop.country','Pick up Country is needed!').custom((value)=>value.trim().length>0),
+    check('date','Date is required to schedule a job!').custom((value)=>value.trim().length>0),
+    check('startTime','Start time is required').custom((value)=>value.trim().length>0),
+    check('motive','Description of the service is required').custom((value)=>value.trim().length>0),
+   ],async (req,res)=>{
+   
+      //when request is received, validate the user data before proceeding further
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        //if there were some errors in the data received send the 400 response with the error message
+        return res.status(400).json({ errors: errors.array() });
+      } try{
+        const expiryTime = 2100000;
+        //destructure the data posted by the client
+        const {helperEmail,pickUp,drop,date,startTime,motive} = req.body;
+        //find the booker to get the email address to send an email
+        booker = await Booker.findById(req.user.id).select('-password');
+        helper = await Helper.findOne({email:helperEmail}).select('-password');
+        if(!booker || !helper){
+          return res.status(400).json({errors: [{msg: "Something happened!"}] });
+        }
+        //create new booking
+        newBooking =  new Booking({helperEmail,
+                                  helperName:helper.name,
+                                  date,
+                                  pickUp,
+                                  drop,
+                                  startTime,
+                                  motive,
+                                  status:0});
+        //check if bookings already exists for this user                                  
+        var bookings = await Bookings.findOne({bookerEmail:booker.email});
+        if(!bookings){
+          //if this is the first time user is booking a service create new bookings document for this user
+          bookings = new Bookings({
+            bookerEmail:booker.email,
+          })
+        } 
+        bookings.bookings.push(newBooking);
+        await bookings.save();
+        //create a payload to be used by jwt to create hash
+        
+        //store the last booking id for further use
+        lastBookingId = bookings.bookings[bookings.bookings.length-1]._id ;
+        const payload = {
+          booking: {
+            /*this id is not in the model, however MongoDB generates object id with every record
+            and mongoose provide an interface to use _id as id without using underscore*/
+            bookerEmail:booker.email,
+            id:lastBookingId
+          },
+        };
+        //create secret UID using jwt to be sent to user 
+        const token = await fn.createBookingToken(payload,res);
+        console.log(token);
+        //create mail structure and send it to the user
+        fn.sendRequestMail(token,helperEmail,booker,pickUp,drop,date,motive,startTime,res);
+        //wait for expiration time of the request and get the status of the booking
+        getStatus = async function(){
+          await fn.customSetTimeout(expiryTime);
+          return await fn.checkStatus(booker.email,lastBookingId);
+        }
+        value = await getStatus();
+        //if 0 is returned that means booking has not been accepted by the driver and we need to cancel it
+        if(!value){
+          //remove the booking as it is not accepted within the defined period
+          bookings.bookings = bookings.bookings.filter((value)=>{
+            return String(value._id) != String(lastBookingId);
+          })
+          await bookings.save();
+          //send mail back to user the booking was not accepted by the driver
+          fn.sendAutomaticMail(token,helperEmail,booker,pickUp,drop,date,motive,startTime,"Helper",res);
+        }
+      } catch (err) {
+        //prints the error message if it fails to delete the helper profile.
+        res.status(500).json({errors: [{msg: err.message}] });
+      }
+  }
+);
+// @route GET api/bookers/futureBookings
+// @desc get future bookings for the booker
+// @access Public
+router.get('/futureBookings',routeAuth,async (req,res)=>{
+     try{
+       //try getting the booker email for future purposes
+        booker = await Booker.findById(req.user.id).select('-password');
+        if(!booker){
+          res.status(500).json({errors: [{msg: 'Unable to find the booker!'}] });
+        }
+        //get the bookings of a booker
+        bookings = await Bookings.findOne({bookerEmail:booker.email});
+        let futureBookings = [];
+        //check if bookings exist for the user
+        if(bookings){
+          today = new Date();
+          //filter bookings which are ahead of today's date and are not in pending state
+          futureBookings = bookings.bookings.filter((value)=>{
+            return value.date.getTime() > today.getTime() && value.status != 0
+          })
+        }
+        res.status(200).json(futureBookings);
+      } catch (err) {
+        //prints the error message if it fails to delete the helper profile.
+        res.status(500).json({errors: [{msg: err.message}] });
+      }
+  }
+);
+// @route GET api/bookers/cancelBooking
+// @desc Cancela booking accepted by the secondary users -> Driver / Helper
+// @access Public
+router.get('/cancelBooking/:id',routeAuth,async (req,res)=>{
+    try{
+      const bookingId = req.params.id;
+      //try getting the booker email for future purposes
+      booker = await Booker.findById(req.user.id).select('-password');
+      if(!booker){
+        res.status(500).json({errors: [{msg: 'Unable to find the booker!'}] });
+      }
+      //get the bookings of a booker
+      bookings = await Bookings.findOne({bookerEmail:booker.email});
+      let specificBooking;
+      //check if bookings exist for the user
+      if(bookings){
+        //get the specific booking which needs to be cancelled
+        //and also remove that from the bookings document
+        bookings.bookings = bookings.bookings.filter((value)=>{
+          if(value._id == bookingId && value.status != 0)
+            specificBooking = value;
+          return value._id != bookingId;
+        });
+      }
+      if(!specificBooking){
+        return res.status(400).json({errors:[{msg:'No such booking exists!'}]})
+      }
+      //save the document with updated bookings
+      await bookings.save();
+      //send mail to the appropriate user that booking has been cancelled
+      if(specificBooking.driverEmail != null)
+        result = await fn.sendCancellationMail(booker.name,specificBooking.driverEmail,specificBooking.pickUp,specificBooking.drop,specificBooking.date,specificBooking.motive,specificBooking.startTime,"Booker",res);
+      else
+        result = await fn.sendCancellationMail(booker.name,specificBooking.helperEmail,specificBooking.pickUp,specificBooking.drop,specificBooking.date,specificBooking.motive,specificBooking.startTime,"Booker",res);
+      if(result >= 200 && result <= 300)
+        msg = 'Email sent!';
+      res.status(200).json({cancellation:true,msg});
+    } catch (err) {
+        //prints the error message if it fails to delete the helper profile.
+        res.status(500).json({errors: [{msg: err.message}] });
+    }
+  }
+);
+// @route POST api/bookers/rate
+// @desc RATE A SERVICE
+// @access Public
+router.post('/rate/:id/:rating',routeAuth,async (req,res)=>{
+  try{
+    const bookingId = req.params.id;
+    const rating = Math.floor(Math.abs(req.params.rating));
+    //try getting the booker email for future purposes
+    booker = await Booker.findById(req.user.id).select('-password');
+    if(!booker){
+      res.status(500).json({errors: [{msg: 'Unable to find the booker!'}] });
+    }
+    //get the bookings of a booker
+    bookings = await Bookings.findOne({bookerEmail:booker.email});
+    let rated = false;
+    let specificBooking = [];
+    //check if bookings exist for the user
+    if(bookings){
+      //go through the bookings and update if not already rated and is not a future booking
+      bookings.bookings = bookings.bookings.map((value)=>{
+        if(value._id == bookingId && value.status != 0 && value.date.getTime() < new Date().getTime() && value.rated != true)
+        {
+          value.rated = true;
+          value.rating = rating;
+          rated = true;
+          specificBooking = value;
+        }
+        return value;
+      });
+    }
+    await bookings.save();
+    if(rated){
+      //update the rating in the user profile or document
+      if(specificBooking.driverEmail != null ){
+        driver = await Driver.findOne({email:specificBooking.driverEmail});
+        if(driver){
+          //updat the totaltrips by one and calculate the updated rating (average)
+          driver.totalTrips = driver.totalTrips + 1;
+          driver.rating = Math.floor((driver.rating+rating)/driver.totalTrips);
+          await driver.save();
+        }
+      }
+      //update the rating in the user profile or document
+      else if(specificBooking.helperEmail != null ){
+        helper = await Helper.findOne({email:specificBooking.helperEmail});
+        if(helper){
+          helper.totalTrips = helper.totalTrips + 1;
+          helper.rating = Math.floor((helper.rating+rating)/helper.totalTrips);
+          await helper.save();
+        }
+      }
+      return res.status(200).json({rated,msg:'Rating updated!'})
+    }
+    else{
+      return res.status(200).json({rated,msg:'Unable to update!'})
+    }
+  } catch (err) {
+      //prints the error message if it fails to delete the helper profile.
+      res.status(500).json({errors: [{msg: err.message}] });
+  }
+}
+);
 module.exports = router;

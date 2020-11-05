@@ -91,4 +91,48 @@ describe('Driver Post endpoints', () => {
     expect(response.statusCode).toEqual(400);
     done();
     });
+
+    /*@test Test Case 4
+    Description  : Check it fails if no email and password provided
+    Input :
+     Expected output : JSON returned with 400 status 
+    */
+    
+    it('Check it fails as user does not provide email and password', async (done) => {
+    const response = await request(app).post('/api/drivers/login').send({});
+    expect(response.statusCode).toEqual(400);
+    done();
+    });
+
+    /*@test Test Case 5
+    Description  : Check it fails if user provides incorrect email and password
+    Input : Email:test123@gmail.com
+            Password: test123,
+     Expected output : JSON returned with 400 status 
+    */
+    
+    it('Check it fails if user provides incorrect email and password', async (done) => {
+    const response = await request(app).post('/api/drivers/login').send({
+        Email:'test123@gmail.com',
+        Password: 'test123',
+    });
+    expect(response.statusCode).toEqual(400);
+    done();
+    });
+
+    /*@test Test Case 6
+    Description  : Check it fails if user provides incorrect email format 
+    Input : Email:test
+            Password: test,
+     Expected output : JSON returned with 400 status 
+    */
+    
+    it('Check it fails if user providesincorrect email format', async (done) => {
+    const response = await request(app).post('/api/drivers/login').send({
+        Email:'test',
+        Password: 'test',
+    });
+    expect(response.statusCode).toEqual(400);
+    done();
+    });
 });

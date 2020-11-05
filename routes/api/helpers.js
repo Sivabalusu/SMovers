@@ -9,6 +9,8 @@ const Helper = require('../../models/Helper');
 const {Bookings,Booking} = require('../../models/Booking');
 const config = require('config');
 const fn = require('../../libs/functions');
+const jwt = require('jsonwebtoken');
+const { Bookings } = require('../../models/Booking');
 
 // @route GET api/helpers
 // @desc Test router
@@ -415,7 +417,6 @@ router.put('/', routeAuth, async(req, res) =>{
     res.status(500).json({errors: [{msg: err.message}] });
   }
 });
-
 // @route GET api/helpers/availability
 // @desc Get Helper Availability for that week
 // @access Public
@@ -510,4 +511,65 @@ router.get('/cancelBooking/:id',routeAuth,async (req,res)=>{
 }
 );
 
+// @route PUT api/helpers/bookingProposal
+// @desc Respond to the request made by the user for a service;
+// @access Public
+router.put('/bookingProposal/:id/:accept', async(req, res) =>{
+  try{
+    const jwtToken = req.params.id;
+    expiredToken = await BlackList.findOne({token:jwtToken});
+    if(expiredToken)
+      return res.status(400).json({errors:[{msg:"Link cannot be used again!"}]});
+    const accept = req.params.accept;
+    //verify the token fetched using secret Key
+    const jwtObject = jwt.verify(jwtToken, config.get('jwtForBooking')); 
+    const bookingId = jwtObject.booking.id;
+    const bookerEmail = jwtObject.booking.bookerEmail;
+    //remove the booking request if drivers rejects it otherwise update the status and send the mail to booker in both cases
+    //get the bookings for the booker
+    bookings = await Bookings.findOne({bookerEmail})
+    let thisBooking;
+    //if driver accepted the request
+    if(accept == 'true'){
+      bookings.bookings = bookings.bookings.map((value)=>{
+        if(String(value._id) == String(bookingId))
+        {
+          thisBooking = value;
+          value.status = 1;
+        }
+        return value;
+      })
+    }
+    //if driver rejected the request
+    else{
+      bookings.bookings = bookings.bookings.filter((value)=> {
+        if(String(value._id) != String(bookingId)){
+          return true;
+        }
+        else{
+          thisBooking = value;
+        }
+      })
+    }
+    //add the token to the blacklist as it cannot be used again
+    blacklist = new BlackList({token:jwtToken});
+    await blacklist.save();
+    await bookings.save();
+    //send mail to the user accordingly 
+    let result;
+    if(accept == 'true'){
+      result = await fn.sendAcceptanceMail(thisBooking.helperName,bookerEmail,thisBooking.pickUp,thisBooking.drop,thisBooking.date,thisBooking.motive,thisBooking.startTime,"Helper",res);
+    }
+    else{
+      result = await fn.sendRejectionMail(thisBooking.helperName,bookerEmail,thisBooking.pickUp,thisBooking.drop,thisBooking.date,thisBooking.motive,thisBooking.startTime,"Helper",res);
+    }
+    let msg;
+    if(result >= 200 && result <= 300)
+      msg = 'Email sent!';
+    res.status(200).json({accept,msg});
+  } catch (err) {
+    //prints the error message if it fails to delete the driver profile.
+    res.status(500).json({errors: [{msg: err.message}] });
+  }
+});
 module.exports = router;

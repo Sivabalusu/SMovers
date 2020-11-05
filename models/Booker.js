@@ -21,7 +21,12 @@ const BookerSchema = new mongoose.Schema({
   },
   phone:{
     type: String,
-  }
+  },
+  rating:{
+    type:Number,
+    min:0,
+    max:5,
+}
 });
 
 module.exports = Booker = mongoose.model('booker', BookerSchema);
