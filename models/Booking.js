@@ -58,6 +58,15 @@ const BookingSchema = new mongoose.Schema( {
     },
     status:{
         type:Number // 0 - Not accepted ,1 - Rejected
+    },
+    rated:{
+        type:Boolean,
+        default : false
+    },
+    rating:{
+        type:Number,
+        max:5,
+        min:1
     }
 });
 

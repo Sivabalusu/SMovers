@@ -793,7 +793,7 @@ router.get('/futureBookings',routeAuth,async (req,res)=>{
       }
   }
 );
-// @route POST api/bookers/cancelBooking
+// @route GET api/bookers/cancelBooking
 // @desc Cancela booking accepted by the secondary users -> Driver / Helper
 // @access Public
 router.get('/cancelBooking/:id',routeAuth,async (req,res)=>{
@@ -835,5 +835,67 @@ router.get('/cancelBooking/:id',routeAuth,async (req,res)=>{
         res.status(500).json({errors: [{msg: err.message}] });
     }
   }
+);
+// @route POST api/bookers/rate
+// @desc RATE A SERVICE
+// @access Public
+router.post('/rate/:id/:rating',routeAuth,async (req,res)=>{
+  try{
+    const bookingId = req.params.id;
+    const rating = Math.floor(Math.abs(req.params.rating));
+    //try getting the booker email for future purposes
+    booker = await Booker.findById(req.user.id).select('-password');
+    if(!booker){
+      res.status(500).json({errors: [{msg: 'Unable to find the booker!'}] });
+    }
+    //get the bookings of a booker
+    bookings = await Bookings.findOne({bookerEmail:booker.email});
+    let rated = false;
+    let specificBooking = [];
+    //check if bookings exist for the user
+    if(bookings){
+      //go through the bookings and update if not already rated and is not a future booking
+      bookings.bookings = bookings.bookings.map((value)=>{
+        if(value._id == bookingId && value.status != 0 && value.date.getTime() < new Date().getTime() && value.rated != true)
+        {
+          value.rated = true;
+          value.rating = rating;
+          rated = true;
+          specificBooking = value;
+        }
+        return value;
+      });
+    }
+    await bookings.save();
+    if(rated){
+      //update the rating in the user profile or document
+      if(specificBooking.driverEmail != null ){
+        driver = await Driver.findOne({email:specificBooking.driverEmail});
+        if(driver){
+          //updat the totaltrips by one and calculate the updated rating (average)
+          driver.totalTrips = driver.totalTrips + 1;
+          driver.rating = Math.floor((driver.rating+rating)/driver.totalTrips);
+          await driver.save();
+        }
+      }
+      //update the rating in the user profile or document
+      else if(specificBooking.helperEmail != null ){
+        helper = await Helper.findOne({email:specificBooking.helperEmail});
+        if(helper){
+          helper.totalTrips = helper.totalTrips + 1;
+          helper.rating = Math.floor((helper.rating+rating)/helper.totalTrips);
+          await helper.save();
+        }
+      }
+      return res.status(200).json({rated,msg:'Rating updated!'})
+    }
+    else{
+      return res.status(200).json({rated,msg:'Unable to update!'})
+    }
+  } catch (err) {
+      //prints the error message if it fails to delete the helper profile.
+      res.status(500).json({errors: [{msg: err.message}] });
+  }
+}
 );
 module.exports = router;
