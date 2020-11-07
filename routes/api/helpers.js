@@ -10,7 +10,6 @@ const {Bookings,Booking} = require('../../models/Booking');
 const config = require('config');
 const fn = require('../../libs/functions');
 const jwt = require('jsonwebtoken');
-const { Bookings } = require('../../models/Booking');
 
 // @route GET api/helpers
 // @desc Test router
@@ -334,7 +333,9 @@ router.get('/forgotPassword',
                              <h4>Ignore if not requested by you or contact us regarding this.</h4>`;
             const to = req.body.email;
             const subject = "Update your password - S_MOVERS"; 
-            fn.sendMail(to,subject,message,res);
+            result = await fn.sendMail(to,subject,message,res);
+            if(result >= 200 && result <=300)
+              res.status(200).json({msg:'Email sent to change the password'})
           }
           else{
             res.status(404).json({errors: [{msg: 'User is not registered with us!'}] });
@@ -346,10 +347,10 @@ router.get('/forgotPassword',
     }
 );
 
-// @route GET api/helpers/forgotPassword/id
+// @route Post api/helpers/changePassword/id
 // @desc create new password from the link sent to the mail
 // @access Public
-router.get('/changePassword/:id',
+router.post('/changePassword/:id',
     [
       check('password', 'Password should have at least 8 chars!').custom((value)=>{
       return !(typeof value == typeof undefined || value == null || value.length < 8);
@@ -439,78 +440,6 @@ router.get('/availability',routeAuth, async(req,res) =>{
 }
 );
 
-// @route GET api/helpers/futureBooking
-// @desc try to get upcoming bookings of helper
-// @access Public
-router.get('/futureBookings',routeAuth,async (req,res)=>{
-  try{
-    //try getting the helper email for future purposes
-     helper = await Helper.findById(req.user.id).select('-password');
-     if(!helper){
-       res.status(500).json({errors: [{msg: 'Unable to find the helper!'}] });
-     }
-     //get the bookings of a helper
-     bookings = await Bookings.findOne({helperEmail:helper.email});
-     let futureBookings = [];
-     //check if bookings exist for the user
-     if(bookings){
-       today = new Date();
-       //filter bookings which are ahead of today's date and are not in pending state
-       futureBookings = bookings.bookings.filter((value)=>{
-         return value.date.getTime() > today.getTime() && value.status != 0
-       })
-     }
-     res.status(200).json(futureBookings);
-   } catch (err) {
-     //prints the error message if it fails to delete the helper profile.
-     res.status(500).json({errors: [{msg: err.message}] });
-   }
-}
-);
-
-// @route POST api/helpers/cancelBooking
-// @desc Cancel booking accepted by the himself
-// @access Public
-router.get('/cancelBooking/:id',routeAuth,async (req,res)=>{
-  try{
-    const bookingId = req.params.id;
-    //try getting the helper email for future purposes
-    helper = await Helper.findById(req.user.id).select('-password');
-    if(!helper){
-      res.status(500).json({errors: [{msg: 'Unable to find the helper!'}] });
-    }
-    //get the bookings of a helper
-    bookings = await Bookings.findOne({helperEmail:helper.email});
-    let specificBooking;
-    //check if bookings exist for the user
-    if(bookings){
-      //get the specific booking which needs to be cancelled
-      //and also remove that from the bookings document
-      bookings.bookings = bookings.bookings.filter((value)=>{
-        if(value._id == bookingId && value.status != 0)
-          specificBooking = value;
-        return value._id != bookingId;
-      });
-    }
-    if(!specificBooking){
-      return res.status(400).json({errors:[{msg:'No such booking exists!'}]})
-    }
-    //save the document with updated bookings
-    await bookings.save();
-    //send mail to the appropriate user that booking has been cancelled
-    if(specificBooking.bookerEmail != null)
-      result = await fn.sendCancellationMail(booker.name,specificBooking.bookerEmail,specificBooking.pickUp,specificBooking.drop,specificBooking.date,specificBooking.motive,specificBooking.startTime,"Booker",res);
-    
-    if(result >= 200 && result <= 300)
-      msg = 'Email sent!';
-    res.status(200).json({cancellation:true,msg});
-  } catch (err) {
-      //prints the error message if it fails to delete the helper profile.
-      res.status(500).json({errors: [{msg: err.message}] });
-  }
-}
-);
-
 // @route PUT api/helpers/bookingProposal
 // @desc Respond to the request made by the user for a service;
 // @access Public
@@ -572,4 +501,114 @@ router.put('/bookingProposal/:id/:accept', async(req, res) =>{
     res.status(500).json({errors: [{msg: err.message}] });
   }
 });
+	// @route POST api/drivers/cancelBooking
+// @desc Helper cancels accepted booking
+// @access Public
+router.post('/cancelBooking/:id',routeAuth,async (req,res)=>{
+  try{
+    const bookerEmail = req.body.bookerEmail;
+    const bookingId = req.params.id;
+    //try getting the driver email for future purposes
+    helper = await Helper.findById(req.user.id).select('-password');
+    if(!helper){
+      return res.status(500).json({errors: [{msg: 'Unable to find the Helper!'}] });
+    }
+    //get the bookings of a driver
+    bookings = await Bookings.findOne({bookerEmail});
+    let specificBooking;
+    //check if bookings exist for the user
+    if(bookings){
+      //get the specific booking which needs to be cancelled
+      //and also remove that from the bookings document
+      bookings.bookings = bookings.bookings.filter((value)=>{
+        if(value._id == bookingId && value.status != 0 && new Date((new Date().setDate((new Date(value.date.toLocaleDateString()).getDate() - 2)))).getTime() >= new Date().getTime())
+          specificBooking = value;
+        return value._id != bookingId;
+      });
+    }
+    if(!specificBooking){
+      return res.status(400).json({errors:[{msg:'No such booking exists!'}]})
+    }
+    //save the document with updated bookings
+    await bookings.save();
+    //send mail to the appropriate user that booking has been cancelled
+    result = await fn.sendCancellationMail(helper.name,bookerEmail,specificBooking.pickUp,specificBooking.drop,specificBooking.date,specificBooking.motive,specificBooking.startTime,"Helper",res);
+    if(result >= 200 && result <= 300)
+      msg = 'Email sent!';
+    res.status(200).json({cancellation:true,msg});
+  } catch (err) {
+      //prints the error message if it fails to delete the helper profile.
+      res.status(500).json({errors: [{msg: err.message}] });
+  }
+}
+);
+// @route GET api/helpers/futureBookings
+// @desc view upcoming bookings
+// @access Public
+router.get("/futureBookings",routeAuth,async (req,res)=>{
+  try{
+    // get booker email from the id 
+    console.log(123);
+    const helper = await Helper.findById({_id:req.user.id});
+    bookings = await Bookings.find();
+    //filter the bookings based on helper email, future date and bookings which are not in pending State
+    bookings = bookings.filter((value)=>{
+      return value.bookings = value.bookings.filter((value)=>{
+        return value.helperEmail == helper.email && value.date.getTime() > new Date().getTime() && value.status != 0;
+      })
+    });
+    console.log(bookings);
+    res.status(200).json(bookings);
+  }catch(err){
+    //something happened at the server side
+    res.status(500).json({ errors: [{ msg: err.message }] });
+  }
+}
+);
+// @route POST api/helpers/rate
+// @desc RATE A SERVICE
+// @access Public
+router.post('/rate/:id/:rating',routeAuth,async (req,res)=>{
+  try{
+    const bookingId = req.params.id;
+    const bookerEmail = req.body.bookerEmail;
+    const rating = Math.floor(Math.abs(req.params.rating));
+    //get the bookings of a booker
+    bookings = await Bookings.findOne({bookerEmail});
+    let bookerRated = false;
+    //check if bookings exist for the user
+    if(bookings){
+      //go through the bookings and update if not already rated and is not a future booking
+      bookings.bookings = bookings.bookings.map((value)=>{
+        if(value._id == bookingId && value.status != 0 && value.date.getTime() < new Date().getTime() && value.bookerRated != true)
+        {
+          value.bookerRated = true;
+          bookerRated = true;
+        }
+        return value;
+      });
+      await bookings.save();
+    }
+    if(bookerRated){
+      //update the rating in the user profile or document
+      booker = await Booker.findOne({email:bookerEmail});
+      
+      console.log(rating,booker.rating);
+      if(booker){
+        booker.numberOfServices = booker.numberOfServices + 1;
+        booker.rating = Math.floor((((booker.numberOfServices - 1) * booker.rating)+rating)/booker.numberOfServices);
+        await booker.save();
+      }
+
+      return res.status(200).json({bookerRated,msg:'Rating updated!'})
+    }
+    else{
+      return res.status(200).json({bookerRated,msg:'Unable to update!'})
+    }
+  } catch (err) {
+      //prints the error message if it fails to delete the helper profile.
+      res.status(500).json({errors: [{msg: err.message}] });
+  }
+}
+);
 module.exports = router;
