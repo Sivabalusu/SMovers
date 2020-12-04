@@ -8,7 +8,8 @@
 		"server": "nodemon server",
 		"test": "jest --detectOpenHandles",
 		"client": "npm start --prefix ../S_MOVERS_CLIENT",
-		"dev": "concurrently \"npm run server\" \"npm run client\""
+		"dev": "concurrently \"npm run server\" \"npm run client\"",
+		"heroku-postbuild": "NPM_CONFIG_PRODUCTION=false && npm install "
 	},
 	"author": "Tarunpreet Singh",
 	"license": "MIT",
