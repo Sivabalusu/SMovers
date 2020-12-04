@@ -6,10 +6,7 @@
 	"scripts": {
 		"start": "node server",
 		"server": "nodemon server",
-		"test": "jest --detectOpenHandles",
-		"client": "npm start --prefix ../S_MOVERS_CLIENT",
-		"dev": "concurrently \"npm run server\" \"npm run client\"",
-		"heroku-postbuild": "set NODE_ENV=production  && npm install "
+		"test": "jest --detectOpenHandles"
 	},
 	"author": "Tarunpreet Singh",
 	"license": "MIT",
