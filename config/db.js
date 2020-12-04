@@ -13,7 +13,6 @@ const connectDB = async () => {
       useCreateIndex: true,
       useFindAndModify:false
     });
-    console.log('Mongo DB connected');
   } catch (err) {
     //if any error occured while connecting to database
     console.error(err.message);

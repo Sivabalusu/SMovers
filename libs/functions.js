@@ -102,9 +102,11 @@ module.exports = {
 		});
 	},
 	updateOrCreateAvailability: async (availability, user) => {
+		let dateUpdated = new Date();
+		dateUpdated.setHours(0, 0, 0, 0);
 		const newAvailability = {
 			email: user.email,
-			dateUpdated: new Date().toLocaleDateString(),
+			dateUpdated,
 		};
 		newAvailability.availability = availability.map(
 			(availability) => availability
@@ -191,8 +193,8 @@ module.exports = {
 		typeOfUser,
 		res
 	) {
-		const acceptanceLink = `http://localhost:5000/api/${typeOfUser}/bookingProposal/${token}/true`;
-		const rejectionLink = `http://localhost:5000/api/${typeOfUser}/bookingProposal/${token}/false`;
+		const acceptanceLink = `http://localhost:3000/bookingResponse/${token}/true/${typeOfUser}`;
+		const rejectionLink = `http://localhost:3000/bookingResponse/${token}/false/${typeOfUser}`;
 		const message = `
       <div style="font-family: sans-serif">
       <h2 style="font-size: 1rem;">Hi,</h2>
@@ -252,7 +254,7 @@ module.exports = {
     `;
 		const to = booker.email;
 		const subject = 'Booking cancellation - S_MOVERS';
-		result = await module.exports.sendMail(to, subject, message, res);
+		// result = await module.exports.sendMail(to, subject, message, res);
 	},
 	sendAcceptanceMail: async function (
 		fromEmail,

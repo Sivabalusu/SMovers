@@ -24,7 +24,7 @@ router.post(
 			//password should be matched according to the criteria defind in the line above
 			min: 8,
 		}),
-		check('confirmPassword', 'Both passowrds must match').custom(
+		check('confirmPassword', 'Both passwords must match').custom(
 			(value, { req }) => {
 				return value === req.body.password;
 			}
@@ -95,7 +95,7 @@ router.post(
 	'/login',
 	[
 		//check if the helper provided the values
-		check('email', 'Email is required').isEmail(),
+		check('email', 'Invalid Email').isEmail(),
 		check('password', 'Password is required').exists(),
 	],
 	async (req, res) => {
@@ -325,7 +325,9 @@ router.delete('/', routeAuth, async (req, res) => {
 				return res.status(200).json(helper);
 			}
 			//when user enters wrong password while deleting the account
-			return res.status(401).json({ errors: [{ msg: 'Incorrect Password!' }] });
+			return res
+				.status(401)
+				.json({ errors: [{ param: 'password', msg: 'Incorrect Password!' }] });
 		}
 		return res
 			.status(400)
@@ -339,7 +341,7 @@ router.delete('/', routeAuth, async (req, res) => {
 // @route GET api/helpers/forgotPassword
 // @desc change password when user is unable to login because they forgot the password;
 // @access Public
-router.get(
+router.post(
 	'/forgotPassword',
 	[
 		//validate the request parameters sent by the client
@@ -360,6 +362,7 @@ router.get(
 					/*this id is not in the model, however MongoDB generates object id with every record
               and mongoose provide an interface to use _id as id without using underscore*/
 					email,
+					typeOfUser: 'helper',
 				},
 			};
 			//check if email address exists in the database
@@ -383,15 +386,17 @@ router.get(
 				const subject = 'Update your password - S_MOVERS';
 				result = await fn.sendMail(to, subject, message, res);
 				if (result >= 200 && result <= 300)
-					res.status(200).json({ msg: 'Email sent to change the password' });
+					res
+						.status(200)
+						.json({ param: 'msg', msg: 'Email sent to change the password' });
 			} else {
-				res
-					.status(404)
-					.json({ errors: [{ msg: 'User is not registered with us!' }] });
+				res.status(404).json({
+					errors: [{ param: 'msg', msg: 'User is not registered with us!' }],
+				});
 			}
 		} catch (err) {
 			//prints the error message if it fails to delete the helper profile.
-			res.status(500).json({ errors: [{ msg: err.message }] });
+			res.status(500).json({ errors: [{ param: 'msg', msg: err.message }] });
 		}
 	}
 );
@@ -653,21 +658,27 @@ router.post('/cancelBooking/:id', routeAuth, async (req, res) => {
 router.get('/futureBookings', routeAuth, async (req, res) => {
 	try {
 		// get booker email from the id
-		console.log(123);
 		const helper = await Helper.findById({ _id: req.user.id });
 		bookings = await Bookings.find();
-		//filter the bookings based on helper email, future date and bookings which are not in pending State
-		bookings = bookings.filter((value) => {
-			return (value.bookings = value.bookings.filter((value) => {
-				return (
+		let upcomingBookings = [];
+		//filter the bookings based on driver email, future date and bookings which are not in pending State
+		bookings.filter((booking) => {
+			booking.bookings.filter((value) => {
+				if (
 					value.helperEmail == helper.email &&
 					value.date.getTime() > new Date().getTime() &&
 					value.status != 0
-				);
-			}));
+				) {
+					const updatedWithBookerEmail = {
+						...value._doc,
+						bookerEmail: booking.bookerEmail,
+					};
+					upcomingBookings.push(updatedWithBookerEmail);
+				}
+			});
 		});
-		console.log(bookings);
-		res.status(200).json(bookings);
+		// console.log(upcomingBookings);
+		res.status(200).json(upcomingBookings);
 	} catch (err) {
 		//something happened at the server side
 		res.status(500).json({ errors: [{ msg: err.message }] });
@@ -704,8 +715,6 @@ router.post('/rate/:id/:rating', routeAuth, async (req, res) => {
 		if (bookerRated) {
 			//update the rating in the user profile or document
 			booker = await Booker.findOne({ email: bookerEmail });
-
-			console.log(rating, booker.rating);
 			if (booker) {
 				booker.numberOfServices = booker.numberOfServices + 1;
 				booker.rating = Math.floor(

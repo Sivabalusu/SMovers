@@ -1,6 +1,7 @@
 const express = require('express');
 const connectDB = require('./config/db');
 const app = express();
+const path = require('path');
 
 //Connect to the Database
 connectDB();
@@ -17,6 +18,10 @@ app.use('/api/helpers', require('./routes/api/helpers'));
 app.use('/api/drivers', require('./routes/api/drivers'));
 app.use('/api/bookings', require('./routes/api/bookings'));
 
+//Serve static assets Prod
+if(process.env.NODE_ENV === 'production'){
+    
+}
 const PORT = process.env.PORT || 5000;
 
 //@ !!!important  uncomment next line if doing dev or production and comment next to next line

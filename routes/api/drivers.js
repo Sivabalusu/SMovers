@@ -114,7 +114,7 @@ router.post(
 	'/login',
 	[
 		//check if the driver provided the values
-		check('email', 'Email is required').isEmail(),
+		check('email', 'Invalid Email').isEmail(),
 		check('password', 'Password is required').exists(),
 	],
 	async (req, res) => {
@@ -376,9 +376,11 @@ router.put('/', routeAuth, async (req, res) => {
 		}
 		availability = req.body.availability;
 		if (availability.length != 7) {
-			return res
-				.status(400)
-				.json({ errors: [{ msg: "Week's availability is required!" }] });
+			return res.status(400).json({
+				errors: [
+					{ param: 'errorMsg', msg: "Week's availability is required!" },
+				],
+			});
 		}
 		//get the user containing the id from the request which we got after routeAuth was run
 		let driver = req.user;
@@ -401,7 +403,7 @@ router.put('/', routeAuth, async (req, res) => {
 // @route GET api/drivers/forgotPassword
 // @desc change password when user is unable to login because they forgot the password;
 // @access Public
-router.get(
+router.post(
 	'/forgotPassword',
 	[
 		//validate the request parameters sent by the client
@@ -422,6 +424,7 @@ router.get(
 					/*this id is not in the model, however MongoDB generates object id with every record
               and mongoose provide an interface to use _id as id without using underscore*/
 					email,
+					typeOfUser: 'driver',
 				},
 			};
 			//check if email address exists in the database
@@ -443,17 +446,19 @@ router.get(
                              <h4>Ignore if not requested by you or contact us regarding this.</h4>`;
 				const to = req.body.email;
 				const subject = 'Update your password - S_MOVERS';
-				fn.sendMail(to, subject, message, res);
+				result = await fn.sendMail(to, subject, message, res);
 				if (result >= 200 && result <= 300)
-					res.status(200).json({ msg: 'Email sent to change the password' });
+					res
+						.status(200)
+						.json({ param: 'msg', msg: 'Email sent to change the password' });
 			} else {
-				res
-					.status(404)
-					.json({ errors: [{ msg: 'User is not registered with us!' }] });
+				res.status(404).json({
+					errors: [{ param: 'msg', msg: 'User is not registered with us!' }],
+				});
 			}
 		} catch (err) {
 			//prints the error message if it fails to delete the helper profile.
-			res.status(500).json({ errors: [{ msg: err.message }] });
+			res.status(500).json({ param: 'msg', errors: [{ msg: err.message }] });
 		}
 	}
 );
@@ -526,7 +531,9 @@ router.get('/availability', routeAuth, async (req, res) => {
 		driver = await Driver.findById(driver.id);
 		if (driver) {
 			availability = await Availability.findOne({ email: driver.email });
-			return res.json(availability);
+			if (availability) return res.status(200).json(availability);
+			else
+				return res.status(400).json({ errors: [{ msg: 'No Availability' }] });
 		}
 		res.status(400).json({ errors: [{ msg: 'Cannot find the driver!' }] });
 	} catch (err) {
@@ -542,18 +549,25 @@ router.get('/futureBookings', routeAuth, async (req, res) => {
 		// get booker email from the id
 		const driver = await Driver.findById({ _id: req.user.id });
 		bookings = await Bookings.find();
+		let upcomingBookings = [];
 		//filter the bookings based on driver email, future date and bookings which are not in pending State
-		bookings = bookings.filter((value) => {
-			return (value.bookings = value.bookings.filter((value) => {
-				return (
+		bookings.filter((booking) => {
+			booking.bookings.filter((value) => {
+				if (
 					value.driverEmail == driver.email &&
 					value.date.getTime() > new Date().getTime() &&
 					value.status != 0
-				);
-			}));
+				) {
+					const updatedWithBookerEmail = {
+						...value._doc,
+						bookerEmail: booking.bookerEmail,
+					};
+					upcomingBookings.push(updatedWithBookerEmail);
+				}
+			});
 		});
-		console.log(bookings);
-		res.status(200).json(bookings);
+		// console.log(upcomingBookings);
+		res.status(200).json(upcomingBookings);
 	} catch (err) {
 		//something happened at the server side
 		res.status(500).json({ errors: [{ msg: err.message }] });
