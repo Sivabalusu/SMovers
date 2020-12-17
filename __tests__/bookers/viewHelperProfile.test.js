@@ -68,7 +68,6 @@ describe('Booker - View Helper endpoint', () => {
     Expected output : JSON returned with 200 status 
     */
     it('Helper\'s data is returned as json when correct id is provided ', async (done) => {
-    console.log(3,id);
     const response = await request(app).get(`/api/bookers/helper/${id}`);
     expect(response.statusCode).toEqual(200);
     done();

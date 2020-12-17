@@ -5,21 +5,20 @@ const db = config.get('mongoURI'); //get the global variable to connecto to DB u
 
 //Connection to DB
 const connectDB = async () => {
-  try {
-    //try connecting to the data by starting the promise
-    await mongoose.connect(db, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      useCreateIndex: true,
-      useFindAndModify:false
-    });
-    console.log('Mongo DB connected');
-  } catch (err) {
-    //if any error occured while connecting to database
-    console.error(err.message);
-    //Kill the process because something wrong happened
-    process.exit(1);
-  }
+	try {
+		//try connecting to the data by starting the promise
+		await mongoose.connect(db, {
+			useNewUrlParser: true,
+			useUnifiedTopology: true,
+			useCreateIndex: true,
+			useFindAndModify: false,
+		});
+	} catch (err) {
+		//if any error occured while connecting to database
+		console.error(err.message);
+		//Kill the process because something wrong happened
+		process.exit(1);
+	}
 };
 
 module.exports = connectDB;

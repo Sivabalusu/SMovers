@@ -1,37 +1,38 @@
 {
-  "name": "s_movers",
-  "version": "1.0.0",
-  "description": "movers for students",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server",
-    "server": "nodemon server",
-    "test": "jest --detectOpenHandles",
-    "client":"npm start --prefix ../client",
-    "dev": "concurrently \"npm run server\" \"npm run client\""
-  },
-  "author": "Tarunpreet Singh",
-  "license": "MIT",
-  "dependencies": {
-    "@sendgrid/mail": "^7.3.0",
-    "bcryptjs": "^2.4.3",
-    "config": "^3.3.2",
-    "express": "^4.17.1",
-    "express-validator": "^6.6.1",
-    "jsonwebtoken": "^8.5.1",
-    "mongoose": "^5.10.7",
-    "request": "^2.88.2"
-  },
-  "devDependencies": {
-    "concurrently": "^5.3.0",
-    "jest": "^26.4.2",
-    "nodemon": "^2.0.4",
-    "supertest": "^5.0.0"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "coveragePathIgnorePatterns": [
-      "/node_modules/"
-    ]
-  }
+	"name": "s_movers",
+	"version": "1.0.0",
+	"description": "movers for students",
+	"main": "server.js",
+	"scripts": {
+		"start": "node server",
+		"server": "nodemon server",
+		"test": "jest --detectOpenHandles",
+		"client": "npm start --prefix ../S_MOVERS_CLIENT",
+		"dev": "concurrently \"npm run server\" \"npm run client\""
+	},
+	"author": "Tarunpreet Singh",
+	"license": "MIT",
+	"dependencies": {
+		"@sendgrid/mail": "^7.3.0",
+		"bcryptjs": "^2.4.3",
+		"config": "^3.3.2",
+		"express": "^4.17.1",
+		"express-validator": "^6.6.1",
+		"jsonwebtoken": "^8.5.1",
+		"moment": "^2.29.1",
+		"mongoose": "^5.10.7",
+		"request": "^2.88.2"
+	},
+	"devDependencies": {
+		"concurrently": "^5.3.0",
+		"jest": "^26.4.2",
+		"nodemon": "^2.0.4",
+		"supertest": "^5.0.0"
+	},
+	"jest": {
+		"testEnvironment": "node",
+		"coveragePathIgnorePatterns": [
+			"/node_modules/"
+		]
+	}
 }
