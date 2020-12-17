@@ -6,13 +6,16 @@
 	"scripts": {
 		"start": "node server",
 		"server": "nodemon server",
-		"test": "jest --detectOpenHandles"
+		"test": "jest --detectOpenHandles",
+		"client": "npm start --prefix ../S_MOVERS_CLIENT",
+		"dev": "concurrently \"npm run server\" \"npm run client\""
 	},
 	"author": "Tarunpreet Singh",
 	"license": "MIT",
 	"dependencies": {
 		"@sendgrid/mail": "^7.3.0",
 		"bcryptjs": "^2.4.3",
+		"config": "^3.3.2",
 		"express": "^4.17.1",
 		"express-validator": "^6.6.1",
 		"jsonwebtoken": "^8.5.1",
